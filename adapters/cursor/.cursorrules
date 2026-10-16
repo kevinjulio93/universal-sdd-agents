@@ -215,12 +215,3 @@ Para evitar el consumo desmedido de tokens analizando sintaxis o simulando petic
 
 > [!IMPORTANT]
 > **Principio "Deterministic First, LLM Last":** Ningún agente debe hacer suposiciones si puede ejecutar el script correspondiente en milisegundos con `run_command`. La salida de los scripts es la evidencia de auditoría oficial.
-
-
-## 🛠️ Stack Tecnológico Activo (TypeScript / Node.js (Vitest, Biome/ESLint, tsc))
-# TypeScript / Node.js Stack Directives
-- **Linter & Formatter**: Biome / ESLint + Prettier
-- **Static Typecheck**: `tsc --noEmit` obligatorio en Gate 1 y Gate 4
-- **Testing Engine**: Vitest / Jest con `--coverage`
-- **Contract Engine**: Schemathesis / Prism contra endpoints Fastify / Express / NestJS / Next.js
-- **Package Manager**: pnpm / npm / yarn

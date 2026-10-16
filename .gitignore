@@ -28,3 +28,5 @@ dist/
 build/
 .cache/
 tmp/
+adapters/antigravity/mcp_config.json
+adapters/cursor/mcp.json
