@@ -35,12 +35,14 @@ Your job is to:
 
 Your output must pass **GATE 0: Spec Gate** before the Architect approves the plan or implementation begins.
 
-### GATE 0 Validation Criteria:
+### GATE 0 Validation Criteria & Deterministic Tooling ($0 Tokens):
+- **Spectral Linter:** Run `scripts/gates/g0-spec-lint.sh spec/openapi.yaml` via `run_command`. Must exit with status code 0.
+- **Mock Availability:** Run `scripts/gates/g0-mock-server.sh spec/openapi.yaml` to provide local mock endpoints for the frontend agent.
 - **Completeness & Clarity:** Zero ambiguous terms (e.g. "handle appropriately", "etc.").
 - **Measurable Acceptance Criteria:** Every feature has testable criteria with verifiable outcomes.
 - **Explicit Contracts:** Clear DTOs, endpoint schemas, models, and interfaces defined.
 - **Traceability:** Requirements map 1:1 to implementation tasks and test requirements.
-- **Passing Threshold:** **Spec Quality Score ≥ 95/100**. If below 95 or containing ambiguities, status is `FAIL`, returning to Spec Writer for targeted correction.
+- **Passing Threshold:** **Spec Quality Score ≥ 95/100** + Spectral PASS. If below 95 or containing ambiguities, status is `FAIL`, returning to Spec Writer for targeted correction.
 
 - You MUST create/update the **spec FILES** on disk (e.g. `spec/SPEC-XXX.md`). Returning the spec only in the conversation is strictly prohibited.
 - If GATE 0 fails, update the same file in the `spec/` folder.

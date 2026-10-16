@@ -203,15 +203,23 @@ Cada ejecución registra un identificador común:
 
 ---
 
-## 7. Reglas Operativas de Ejecución en Antigravity
+---
 
-1. **Delegación de Subagentes:**
-   El orquestador debe usar la herramienta **`invoke_subagent`** con el `TypeName` (`spec-writer`, `frontend-agent`, `backend-agent`, `database-agent`, `security-agent`, `quality-gate-evaluator`, `code-review-agent`, `qa-agent`).
-   *Nota:* `send_message` solo se utiliza con `conversationId` activos retornados por `invoke_subagent`.
-2. **Permisos de Herramientas:**
-   Tanto el Orquestador como los especialistas disponen de herramientas nativas completas (`write_to_file`, `replace_file_content`, `run_command`, `view_file`, `manage_task`).
-3. **Prioridad Determinista:**
-   Los tests deterministas, la compilación y la verificación estática tienen precedencia sobre la opinión subjetiva del LLM. Si un test falla, el Gate es `FAIL`.
+## 8. Mandato de Herramientas Deterministas y Ahorro de Tokens ($0 Tokens)
+
+Para evitar el consumo desmedido de tokens analizando sintaxis o simulando peticiones, **todos los agentes y evaluadores deben priorizar y ejecutar los scripts deterministas locales**:
+
+| Gate | Script Determinista | Motor / Herramienta | Acción requerida antes de evaluar |
+| :--- | :--- | :--- | :--- |
+| **GATE 0** | `scripts/gates/g0-spec-lint.sh` | **Stoplight Spectral** | Ejecutar linter sobre el archivo `spec/openapi.yaml`. Si falla, rechazar inmediatamente. |
+| **GATE 0** | `scripts/gates/g0-mock-server.sh` | **Stoplight Prism** | Levantar mocks locales para desbloquear al frontend en paralelo. |
+| **GATE 1** | `scripts/gates/g1-static-check.sh` | **tsc / Biome / Ruff** | Typecheck y linter del código con 0 warnings/errores. |
+| **GATE 2** | `scripts/gates/g2-contract-test.sh` | **Schemathesis** | Ejecutar contract fuzzing contra los endpoints. Exigir **Zero Spec Drift**. |
+| **GATE 4** | `scripts/gates/g4-test-and-security.sh` | **Semgrep + Tests** | Ejecutar suite de pruebas con umbral de cobertura y análisis SAST de seguridad. |
+| **GATE 5** | `scripts/gates/g5-metrics-summary.sh` | **Consolidador SDD** | Emitir el resumen formal en JSON ultra compacto (< 30 tokens). |
+
+> [!IMPORTANT]
+> **Principio "Deterministic First, LLM Last":** Ningún agente debe hacer suposiciones si puede ejecutar el script correspondiente en milisegundos con `run_command`. La salida de los scripts es la evidencia de auditoría oficial.
 
 
 ## 🛠️ Stack Tecnológico Activo (TypeScript / Node.js (Vitest, Biome/ESLint, tsc))
