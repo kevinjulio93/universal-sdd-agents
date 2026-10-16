@@ -1,0 +1,25 @@
+{
+  "name": "universal-sdd-agents",
+  "version": "1.0.0",
+  "description": "Interactive CLI for Universal Spec-Driven Development Multi-Agent Ecosystem",
+  "bin": {
+    "sdd": "./bin/sdd.js",
+    "universal-sdd": "./bin/sdd.js"
+  },
+  "scripts": {
+    "start": "node ./bin/sdd.js",
+    "sync": "node ./scripts/sync.js"
+  },
+  "keywords": [
+    "sdd",
+    "spec-driven-development",
+    "agents",
+    "quality-gates",
+    "cursor",
+    "antigravity",
+    "claude-code",
+    "windsurf"
+  ],
+  "author": "Kevin Julio Marquez",
+  "license": "MIT"
+}
