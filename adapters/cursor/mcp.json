@@ -1,0 +1,45 @@
+{
+  "mcpServers": {
+    "context7": {
+      "type": "remote",
+      "url": "${CONTEXT7_MCP_URL}",
+      "enabled": true
+    },
+    "n8n-mcp": {
+      "type": "remote",
+      "url": "${N8N_MCP_URL}",
+      "httpUrl": "${N8N_MCP_URL}",
+      "headers": {
+        "Authorization": "Bearer ${N8N_MCP_TOKEN}"
+      },
+      "enabled": true
+    },
+    "google-drive": {
+      "type": "remote",
+      "url": "${GOOGLE_DRIVE_MCP_URL}",
+      "enabled": true
+    },
+    "canva": {
+      "type": "remote",
+      "url": "${CANVA_MCP_URL}",
+      "enabled": true
+    },
+    "desktop-commander": {
+      "type": "local",
+      "command": [
+        "${NPX_BIN}",
+        "-y",
+        "@wonderwhy-er/desktop-commander@latest"
+      ],
+      "enabled": true
+    },
+    "markitdown": {
+      "type": "local",
+      "command": [
+        "${UVX_BIN}",
+        "markitdown-mcp"
+      ],
+      "enabled": true
+    }
+  }
+}

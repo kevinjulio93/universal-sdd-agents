@@ -1,0 +1,30 @@
+# Dependencies & Environments
+node_modules/
+.venv/
+venv/
+__pycache__/
+
+# Secrets & Local Configurations (CRITICAL)
+.env
+.env.local
+*.pem
+*.key
+*.jwt
+
+# OS / Editor artifacts
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Test & Coverage Outputs
+coverage/
+.nyc_output/
+.schemathesis/
+.pytest_cache/
+
+# Local build / temporary files
+dist/
+build/
+.cache/
+tmp/

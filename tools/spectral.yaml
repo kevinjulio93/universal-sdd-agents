@@ -1,0 +1,9 @@
+# Stoplight Spectral - Reglas de Linter OpenAPI para SDD Gate 0
+extends: ["spectral:oas"]
+rules:
+  operation-description: warn
+  operation-tags: warn
+  operation-operationId-unique: error
+  info-contact: off
+  info-description: warn
+  no-eval-in-markdown: error

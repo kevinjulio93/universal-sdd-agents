@@ -1,0 +1,13 @@
+# Semgrep - Reglas SAST Ligeras para Gate 4
+rules:
+  - id: hardcoded-secret-or-key
+    patterns:
+      - pattern-either:
+          - pattern: '$KEY = "..."'
+          - pattern: 'const $KEY = "..."'
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i)(api_key|apikey|secret|token|password|auth_token)
+    message: "Posible secreto o credencial hardcodeada detectada."
+    languages: [javascript, typescript, python]
+    severity: ERROR

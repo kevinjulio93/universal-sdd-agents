@@ -1,0 +1,214 @@
+# SPEC-DRIVEN DEVELOPMENT (SDD) - MULTIAGENT ENGINE
+
+Este proyecto opera bajo **Spec-Driven Development** gobernado por **Quality Gates (G0-G5)**.
+**Regla de Oro:** Deterministic First, LLM Last. Antes de evaluar subjetivamente, corre los scripts en `scripts/gates/`.
+
+# Multi-Agent Quality Gates Architecture (SDD & Quality Gates G0-G5)
+
+Este entorno opera bajo un sistema multiagente riguroso para **Spec-Driven Development (SDD)** gobernado por **Quality Gates (G0 a G5)**.
+Ningún agente puede aprobar su propio trabajo únicamente porque afirme que está terminado. La aprobación debe basarse en evidencias verificables, evaluadores independientes y umbrales definidos en la especificación.
+
+---
+
+## 1. Diagrama de Flujo y Jerarquía del Sistema
+
+```mermaid
+flowchart TD
+    U["Usuario: requerimiento"] --> S["1. SPEC: requisitos y criterios de aceptación"]
+    S --> G0{"GATE 0: Spec Gate"}
+
+    G0 -->|"FAIL"| SW["Spec Writer: corregir especificación"]
+    SW --> G0
+    G0 -->|"PASS"| O["2. Architect / Orchestrator"]
+
+    O --> P["3. Plan de ejecución y contratos"]
+    P --> PAR{"Ejecución paralela"}
+
+    PAR --> BE["Backend Agent"]
+    PAR --> FE["Frontend Agent"]
+    PAR --> DB["Database Agent"]
+    PAR --> SEC["Security / Rules Agent"]
+
+    BE --> EBE["Evaluator Backend"]
+    FE --> EFE["Evaluator Frontend"]
+    DB --> EDB["Evaluator Database"]
+    SEC --> ESEC["Evaluator Security"]
+
+    EBE --> G1{"GATE 1: Agent Quality Gate"}
+    EFE --> G1
+    EDB --> G1
+    ESEC --> G1
+
+    G1 -->|"FAIL"| FIX["Reintento dirigido al agente responsable"]
+    FIX --> PAR
+    G1 -->|"PASS"| C["4. Contract Validator"]
+
+    C --> G2{"GATE 2: Contract Gate"}
+    G2 -->|"FAIL"| FIX
+    G2 -->|"PASS"| I["5. Integration Evaluator"]
+
+    I --> G3{"GATE 3: Integration Gate"}
+    G3 -->|"FAIL"| FIX
+    G3 -->|"PASS"| CR["6. Independent Code Review"]
+
+    CR --> QA["7. QA / Test Executor"]
+    QA --> G4{"GATE 4: Test & Regression Gate"}
+
+    G4 -->|"FAIL"| FIX
+    G4 -->|"PASS"| F["8. Final Evaluator"]
+
+    F --> G5{"GATE 5: Release Gate"}
+    G5 -->|"FAIL"| FIX
+    G5 -->|"PASS"| OUT["Resultado aprobado + evidencias"]
+
+    OUT --> CP["Commit / Push / PR según política"]
+
+    G0 -.-> OBS["Observabilidad: trazas, scores, tests, tokens, coste, latencia"]
+    G1 -.-> OBS
+    G2 -.-> OBS
+    G3 -.-> OBS
+    G4 -.-> OBS
+    G5 -.-> OBS
+
+    classDef gate fill:#fff0c2,stroke:#b8860b,color:#222;
+    classDef agent fill:#dbeafe,stroke:#2563eb,color:#172554;
+    classDef success fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef failure fill:#fee2e2,stroke:#dc2626,color:#7f1d1d;
+    class G0,G1,G2,G3,G4,G5 gate;
+    class O,P,BE,FE,DB,SEC,EBE,EFE,EDB,ESEC,C,I,CR,QA,F agent;
+    class OUT,CP success;
+    class FIX failure;
+```
+
+---
+
+## 2. Definición y Métricas de cada Quality Gate
+
+| Gate | Nombre | Qué mide | Umbral Mínimo / Criterio de Aprobación |
+| :--- | :--- | :--- | :--- |
+| **GATE 0** | **Specification Quality Gate** | Requisitos completos y sin ambigüedades, criterios de aceptación medibles, reglas de negocio, contratos trazables a tareas y tests antes de tocar código. | **Score ≥ 95/100** en Spec Quality. |
+| **GATE 1** | **Agent Quality Gate** | Exactitud técnica, cumplimiento de instrucciones de la SPEC, uso correcto de herramientas y evidencia respaldando decisiones de cada especialista. | **Exactitud ≥ 90/100**, 100% cumplimiento de contrato individual, 0 fallos críticos. |
+| **GATE 2** | **Contract Gate** | Compatibilidad cruzada: esquemas OpenAPI, interfaces TypeScript, DTOs, modelos de datos, eventos y migración de base de datos. | **100% de contratos críticos válidos**. Cero discrepancias de interfaz. |
+| **GATE 3** | **Integration Quality Gate** | Sistema integrado: flujos E2E completos, consistencia de datos, autenticación/autorización, concurrencia y manejo de excepciones. | **100% de flujos críticos de aceptación aprobados**. |
+| **GATE 4** | **Test & Regression Gate** | Código ejecutable: Unit tests, integration tests, E2E, linter, typecheck (`tsc --noEmit`), compilación limpia y ausencia de regresiones contra rama base. | **100% pruebas críticas aprobadas; cero defectos críticos conocidos**. |
+| **GATE 5** | **Final Quality / Release Gate** | Decisión final independiente: exactitud respecto a la SPEC, cobertura total de criterios de aceptación, seguridad y evidencias reproducibles. | **Score global ≥ 90/100**, cero fallos críticos y aprobación unánime de gates previos. |
+
+---
+
+## 3. Modelo y Ponderación de Score (100 Puntos)
+
+El evaluador emite un score cuantitativo basado en evidencias reales (no en suposiciones). La ponderación oficial es:
+
+| Dimensión | Peso | Qué evalúa |
+| :--- | :---: | :--- |
+| **Exactitud técnica** | **35%** | Código técnicamente correcto, patrones limpios, ejecución exitosa y tests de referencia. |
+| **Cumplimiento de la SPEC** | **25%** | Verificación requisito por requisito de la especificación activa. |
+| **Pruebas y evidencias** | **20%** | Cobertura de tests, trazabilidad a logs, archivos, compilación y pruebas deterministas. |
+| **Contratos e integración** | **15%** | Compatibilidad de esquemas, DTOs, tipado estricto e interoperabilidad entre módulos. |
+| **Eficiencia** | **5%** | Tokens, latencia, simplicidad y coste por tarea (peso bajo para no premiar rapidez sobre calidad). |
+
+> [!CRITICAL]
+> **Regla de Oro de Fallos Críticos:** Los fallos críticos (de seguridad, compilación o requisitos esenciales de la SPEC) **bloquean el gate inmediatamente (`FAIL` / `BLOCKED`)**, independientemente de qué tan alto sea el promedio del score numérico.
+
+---
+
+## 4. Contrato JSON Estandarizado de los Agentes
+
+Todo agente especialista y evaluador debe entregar su resultado estructurado según este contrato obligatorio:
+
+```json
+{
+  "agent": "backend-agent",
+  "task_id": "TASK-104",
+  "input_spec_version": "1.2",
+  "status": "completed",
+  "output": {
+    "summary": "Implemented the requested API and endpoints",
+    "modified_files": [
+      "src/infrastructure/api/client.ts"
+    ],
+    "contract_changes": [],
+    "tests": [
+      "tests/unit/api_client.test.ts"
+    ]
+  },
+  "evidence": {
+    "build_passed": true,
+    "tests_passed": 24,
+    "tests_failed": 0,
+    "acceptance_criteria": [
+      {
+        "id": "AC-01",
+        "status": "passed",
+        "evidence": "tests/unit/api_client.test.ts::test_send_message"
+      }
+    ]
+  },
+  "evaluation": {
+    "accuracy": 94,
+    "instruction_adherence": 100,
+    "groundedness": 95,
+    "critical_failures": [],
+    "decision": "PASS"
+  },
+  "gate": {
+    "name": "agent-quality",
+    "status": "PASS",
+    "threshold": 90
+  }
+}
+```
+
+---
+
+## 5. Política de Aprobación, Reintentos y Escalado
+
+```mermaid
+flowchart TD
+    A["Resultado del agente"] --> B["Validación determinista (compilación, tests, lint)"]
+    B --> C["Evaluación independiente"]
+    C --> D{"¿Cumple score y reglas críticas?"}
+
+    D -->|"Sí"| E["PASS: habilitar siguiente etapa"]
+    D -->|"No"| F{"¿Es recuperable?"}
+
+    F -->|"Sí"| G["Identificar causa y agente responsable"]
+    G --> H["Reintento dirigido con feedback"]
+    H --> A
+
+    F -->|"No"| I["BLOCKED: intervención humana"]
+    I --> J["Corregir SPEC, arquitectura o política"]
+
+    E --> K["Registrar score, evidencia y trace"]
+```
+
+### Reglas de Reintento:
+1. **Feedback Dirigido:** El agente que falla recibe únicamente los hallazgos y errores relevantes para corregir (no se reinicia todo el sistema por un fallo localizado).
+2. **Límite de Reintentos:** Máximo **3 reintentos por tarea**. Si tras el 3er intento persiste el fallo, el estado pasa a **`BLOCKED`** y se escala al usuario con el diagnóstico exacto.
+3. **Sin Autocertificación:** Ningún agente especialista puede evaluarse ni darse el visto bueno a sí mismo.
+4. **Evidencias Obligatorias:** Ningún resultado avanza a Commit / Push / PR si faltan evidencias reproducibles en disco (ej. logs de test, archivos en `spec/`).
+
+---
+
+## 6. Observabilidad y Trazabilidad
+
+Cada ejecución registra un identificador común:
+- `trace_id`: UUID de la sesión / feature en ejecución.
+- `span_id`: Identificador único por agente, evaluación y gate.
+- Registro en `memory.json` o logs de observabilidad:
+  - Versión de la SPEC analizada.
+  - Llamadas a herramientas y resultados.
+  - Scores y decisiones de cada Gate (G0 a G5).
+  - Tiempos de ejecución, tokens consumidos y número de reintentos.
+
+---
+
+## 7. Reglas Operativas de Ejecución en Antigravity
+
+1. **Delegación de Subagentes:**
+   El orquestador debe usar la herramienta **`invoke_subagent`** con el `TypeName` (`spec-writer`, `frontend-agent`, `backend-agent`, `database-agent`, `security-agent`, `quality-gate-evaluator`, `code-review-agent`, `qa-agent`).
+   *Nota:* `send_message` solo se utiliza con `conversationId` activos retornados por `invoke_subagent`.
+2. **Permisos de Herramientas:**
+   Tanto el Orquestador como los especialistas disponen de herramientas nativas completas (`write_to_file`, `replace_file_content`, `run_command`, `view_file`, `manage_task`).
+3. **Prioridad Determinista:**
+   Los tests deterministas, la compilación y la verificación estática tienen precedencia sobre la opinión subjetiva del LLM. Si un test falla, el Gate es `FAIL`.
