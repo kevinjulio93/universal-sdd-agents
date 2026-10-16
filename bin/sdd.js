@@ -123,6 +123,8 @@ async function main() {
       fs.cpSync(path.join(REPO_ROOT, 'core', 'agents'), path.join(agentsDest, 'agents'), { recursive: true });
       fs.cpSync(path.join(REPO_ROOT, 'core', 'rules'), path.join(agentsDest, 'rules'), { recursive: true });
       fs.cpSync(path.join(REPO_ROOT, 'core', 'skills'), path.join(agentsDest, 'skills'), { recursive: true });
+      fs.cpSync(path.join(REPO_ROOT, 'scripts'), path.join(agentsDest, 'scripts'), { recursive: true });
+      fs.cpSync(path.join(REPO_ROOT, 'tools'), path.join(agentsDest, 'tools'), { recursive: true });
       fs.copyFileSync(path.join(ADAPTERS_DIR, 'antigravity', 'mcp_config.json'), path.join(agentsDest, 'mcp_config.json'));
       fs.copyFileSync(path.join(ADAPTERS_DIR, 'antigravity', 'plugin.json'), path.join(agentsDest, 'plugin.json'));
 
