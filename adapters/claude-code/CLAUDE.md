@@ -212,3 +212,12 @@ Cada ejecución registra un identificador común:
    Tanto el Orquestador como los especialistas disponen de herramientas nativas completas (`write_to_file`, `replace_file_content`, `run_command`, `view_file`, `manage_task`).
 3. **Prioridad Determinista:**
    Los tests deterministas, la compilación y la verificación estática tienen precedencia sobre la opinión subjetiva del LLM. Si un test falla, el Gate es `FAIL`.
+
+
+## 🛠️ Stack Tecnológico Activo (TypeScript / Node.js (Vitest, Biome/ESLint, tsc))
+# TypeScript / Node.js Stack Directives
+- **Linter & Formatter**: Biome / ESLint + Prettier
+- **Static Typecheck**: `tsc --noEmit` obligatorio en Gate 1 y Gate 4
+- **Testing Engine**: Vitest / Jest con `--coverage`
+- **Contract Engine**: Schemathesis / Prism contra endpoints Fastify / Express / NestJS / Next.js
+- **Package Manager**: pnpm / npm / yarn

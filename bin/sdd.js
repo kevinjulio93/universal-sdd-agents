@@ -23,7 +23,12 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-const ask = (query) => new Promise((resolve) => rl.question(query, resolve));
+const it = rl[Symbol.asyncIterator]();
+async function ask(query) {
+  process.stdout.write(query);
+  const next = await it.next();
+  return next.done ? '' : (next.value || '').trim();
+}
 
 const SCOPES = [
   { id: 'global', name: '🌍 Global (Disponible en TODA tu máquina para cualquier proyecto que abras)' },
@@ -32,6 +37,7 @@ const SCOPES = [
 
 const HARNESSES = [
   { id: 'antigravity', name: 'Google Antigravity (Nativo en ~/.agents y plugins)' },
+  { id: 'opencode', name: 'OpenCode (Nativo en ~/.config/opencode/agents)' },
   { id: 'cursor', name: 'Cursor IDE (.cursorrules, .cursor/rules/*.mdc, mcp.json)' },
   { id: 'claude', name: 'Claude Code (CLAUDE.md modular)' },
   { id: 'windsurf', name: 'Windsurf / Cascade (.windsurfrules)' },
@@ -118,6 +124,14 @@ async function main() {
       fs.cpSync(path.join(REPO_ROOT, 'core', 'skills'), path.join(agentsDest, 'skills'), { recursive: true });
       fs.copyFileSync(path.join(ADAPTERS_DIR, 'antigravity', 'mcp_config.json'), path.join(agentsDest, 'mcp_config.json'));
       console.log(`  ✅ [Antigravity] Agentes, reglas y MCPs instalados globalmente en ${agentsDest}`);
+    }
+
+    if (harnessId === 'opencode') {
+      const openCodeDest = isGlobal ? path.join(HOME, '.config', 'opencode') : path.join(process.cwd(), '.opencode');
+      const openCodeAgents = path.join(openCodeDest, 'agents');
+      fs.mkdirSync(openCodeAgents, { recursive: true });
+      fs.cpSync(path.join(REPO_ROOT, 'core', 'agents'), openCodeAgents, { recursive: true });
+      console.log(`  ✅ [OpenCode] 9 Agentes actualizados y listos en ${openCodeAgents}`);
     }
 
     if (harnessId === 'cursor') {
