@@ -114,12 +114,16 @@ npm start
 sdd
 ```
 
-El CLI te guiará con un menú interactivo:
+El CLI te guiará con un menú interactivo en 3 pasos:
 ```text
 ================================================================
- 🚀 UNIVERSAL SDD AGENTS - CLI & SCAFFOLDER (v1.0.0)
+ 🚀 UNIVERSAL SDD AGENTS - CLI & SCAFFOLDER (v1.1.0)
  Spec-Driven Development | Quality Gates G0-G5 | Multi-Harness
 ================================================================
+
+🌐 ¿Dónde deseas instalar o actualizar los agentes?
+  [1] 🌍 Global (Disponible en TODA tu máquina para cualquier proyecto que abras)
+  [2] 📁 Proyecto Actual (Solo para la carpeta actual donde ejecutas el comando)
 
 🎯 Selecciona el Harness de IA que deseas configurar o añadir:
   [1] Google Antigravity (Plugin nativo ~/.agents)
@@ -135,6 +139,10 @@ El CLI te guiará con un menú interactivo:
   [4] Java / Kotlin (JUnit 5, Maven/Gradle, Spring Boot)
   [5] Agnóstico / Políglota (Sin stack predeterminado)
 ```
+
+### 🌍 Diferencia entre Modo Global y Modo Proyecto:
+- **Modo Global (`~/.cursor/rules`, `~/.agents`, `~/CLAUDE.md`)**: Configura el equipo de agentes a nivel de usuario en tu Mac. Cualquier carpeta o proyecto nuevo que abras en tu editor heredará automáticamente a los 9 agentes y las Quality Gates sin tener que reconfigurar nada.
+- **Modo Proyecto (`./.cursor/`, `./CLAUDE.md`, `./.windsurfrules`)**: Despliega los agentes y compuertas exclusivamente dentro de la carpeta actual. Ideal para compartir el flujo con tu equipo y commitear las reglas al repositorio de ese proyecto.
 
 > [!TIP]
 > **Adición incremental de harnesses:** Si hoy estás trabajando en **Cursor** y mañana quieres usar **Claude Code** o **Antigravity**, solo vuelve a ejecutar `sdd` y selecciona el nuevo harness. El CLI preservará tu configuración y generará los adaptadores correspondientes.
