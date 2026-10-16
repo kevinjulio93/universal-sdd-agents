@@ -95,37 +95,49 @@ Puedes exportar o sincronizar este ecosistema hacia cualquier entorno de IA:
 
 ---
 
-## ⚡ Instalación Rápida en 1 Minuto
+## ⚡ Instalación Rápida con CLI Interactivo
+
+El repositorio incluye un **CLI Scaffolder interactivo (`sdd`)** con cero dependencias externas para configurar cualquier harness y especializar a los agentes según el lenguaje de tu proyecto.
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/kevinjuliomarquez/universal-sdd-agents.git
+git clone git@github.com:kevinjulio93/universal-sdd-agents.git
 cd universal-sdd-agents
-```
-
-### 2. Configurar tus credenciales
-```bash
 cp .env.example .env
-# Edita .env con tus tokens o URLs si usas MCPs remotos
 ```
 
-### 3. Instalar en tu harness preferido
+### 2. Ejecutar el Asistente Interactivo
+Puedes ejecutarlo directamente con Node o instalarlo globalmente:
 ```bash
-# Para Google Antigravity
-./scripts/install.sh antigravity
-
-# Para Cursor (en tu proyecto actual)
-./scripts/install.sh cursor
-
-# Para Claude Code
-./scripts/install.sh claude
-
-# Para Windsurf
-./scripts/install.sh windsurf
-
-# Para sincronizar todos a la vez
-./scripts/install.sh all
+npm start
+# O si lo enlazas con npm link:
+sdd
 ```
+
+El CLI te guiará con un menú interactivo:
+```text
+================================================================
+ 🚀 UNIVERSAL SDD AGENTS - CLI & SCAFFOLDER (v1.0.0)
+ Spec-Driven Development | Quality Gates G0-G5 | Multi-Harness
+================================================================
+
+🎯 Selecciona el Harness de IA que deseas configurar o añadir:
+  [1] Google Antigravity (Plugin nativo ~/.agents)
+  [2] Cursor IDE (.cursor/rules/*.mdc, .cursorrules, mcp.json)
+  [3] Claude Code (CLAUDE.md modular)
+  [4] Windsurf / Cascade (.windsurfrules)
+  [5] Todos los anteriores (Full Ecosystem)
+
+💻 Selecciona el Lenguaje / Stack principal de tu proyecto:
+  [1] TypeScript / Node.js (Vitest, Biome/ESLint, tsc)
+  [2] Python (Pytest, Ruff, Mypy, FastAPI/Django)
+  [3] Go (go test, golangci-lint, Gin/Fiber)
+  [4] Java / Kotlin (JUnit 5, Maven/Gradle, Spring Boot)
+  [5] Agnóstico / Políglota (Sin stack predeterminado)
+```
+
+> [!TIP]
+> **Adición incremental de harnesses:** Si hoy estás trabajando en **Cursor** y mañana quieres usar **Claude Code** o **Antigravity**, solo vuelve a ejecutar `sdd` y selecciona el nuevo harness. El CLI preservará tu configuración y generará los adaptadores correspondientes.
 
 ---
 
