@@ -116,14 +116,30 @@ async function main() {
 
   function deployTarget(harnessId) {
     if (harnessId === 'antigravity') {
-      // Antigravity SIEMPRE es global en ~/.agents
       const agentsDest = path.join(HOME, '.agents');
+      const geminiPluginsDest = path.join(HOME, '.gemini', 'config', 'plugins', 'engineering-team');
+      
       fs.mkdirSync(agentsDest, { recursive: true });
       fs.cpSync(path.join(REPO_ROOT, 'core', 'agents'), path.join(agentsDest, 'agents'), { recursive: true });
       fs.cpSync(path.join(REPO_ROOT, 'core', 'rules'), path.join(agentsDest, 'rules'), { recursive: true });
       fs.cpSync(path.join(REPO_ROOT, 'core', 'skills'), path.join(agentsDest, 'skills'), { recursive: true });
       fs.copyFileSync(path.join(ADAPTERS_DIR, 'antigravity', 'mcp_config.json'), path.join(agentsDest, 'mcp_config.json'));
-      console.log(`  ✅ [Antigravity] Agentes, reglas y MCPs instalados globalmente en ${agentsDest}`);
+      fs.copyFileSync(path.join(ADAPTERS_DIR, 'antigravity', 'plugin.json'), path.join(agentsDest, 'plugin.json'));
+
+      // Registrar plugin nativo en ~/.gemini/config/plugins/engineering-team
+      fs.mkdirSync(path.dirname(geminiPluginsDest), { recursive: true });
+      try {
+        if (fs.existsSync(geminiPluginsDest)) {
+          fs.rmSync(geminiPluginsDest, { recursive: true, force: true });
+        }
+        fs.symlinkSync(agentsDest, geminiPluginsDest, 'dir');
+      } catch (e) {
+        // Fallback a copia si no permite symlinks
+        fs.cpSync(agentsDest, geminiPluginsDest, { recursive: true });
+      }
+
+      console.log(`  ✅ [Antigravity] 1. Agentes y reglas instalados en: ${agentsDest}`);
+      console.log(`  ✅ [Antigravity] 2. Plugin registrado nativamente en: ${geminiPluginsDest}`);
     }
 
     if (harnessId === 'opencode') {
