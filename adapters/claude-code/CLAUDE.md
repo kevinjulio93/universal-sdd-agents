@@ -52,7 +52,7 @@ flowchart TD
     G3 -->|"PASS"| CR["6. Independent Code Review"]
 
     CR --> QA["7. QA / Test Executor"]
-    QA --> G4{"GATE 4: Test & Regression Gate"}
+    QA --> G4{"GATE 4: Test & Regression Gate (SonarQube QG)"}
 
     G4 -->|"FAIL"| FIX
     G4 -->|"PASS"| F["8. Final Evaluator"]
@@ -90,8 +90,8 @@ flowchart TD
 | **GATE 1** | **Agent Quality Gate** | Exactitud técnica, cumplimiento de instrucciones de la SPEC, uso correcto de herramientas y evidencia respaldando decisiones de cada especialista. | **Exactitud ≥ 90/100**, 100% cumplimiento de contrato individual, 0 fallos críticos. |
 | **GATE 2** | **Contract Gate** | Compatibilidad cruzada: esquemas OpenAPI, interfaces TypeScript, DTOs, modelos de datos, eventos y migración de base de datos. | **100% de contratos críticos válidos**. Cero discrepancias de interfaz. |
 | **GATE 3** | **Integration Quality Gate** | Sistema integrado: flujos E2E completos, consistencia de datos, autenticación/autorización, concurrencia y manejo de excepciones. | **100% de flujos críticos de aceptación aprobados**. |
-| **GATE 4** | **Test & Regression Gate** | Código ejecutable: Unit tests, integration tests, E2E, linter, typecheck (`tsc --noEmit`), compilación limpia y ausencia de regresiones contra rama base. | **100% pruebas críticas aprobadas; cero defectos críticos conocidos**. |
-| **GATE 5** | **Final Quality / Release Gate** | Decisión final independiente: exactitud respecto a la SPEC, cobertura total de criterios de aceptación, seguridad y evidencias reproducibles. | **Score global ≥ 90/100**, cero fallos críticos y aprobación unánime de gates previos. |
+| **GATE 4** | **Test, Coverage & Regression Gate** | Código ejecutable: Unit tests, integration tests, E2E, linter, typecheck (`tsc --noEmit`), compilación limpia y ausencia de regresiones contra rama base. **Auditoría de cobertura exacta con SonarQube** (Line Coverage ≥ 80% y Branch Coverage ≥ 80%) y **Quality Gate de SonarQube en estado `PASSED` / `OK`** (0 vulnerabilidades, 0 bugs críticos/blocker, duplicación ≤ 3%). | **100% pruebas críticas aprobadas; SonarQube Quality Gate `OK`; cero defectos críticos conocidos**. |
+| **GATE 5** | **Final Quality / Release Gate** | Decisión final independiente: exactitud respecto a la SPEC, cobertura total de criterios de aceptación, métricas SonarQube auditadas, seguridad y evidencias reproducibles. | **Score global ≥ 90/100**, cero fallos críticos, SonarQube Quality Gate aprobado y aprobación unánime de gates previos. |
 
 ---
 
@@ -103,7 +103,7 @@ El evaluador emite un score cuantitativo basado en evidencias reales (no en supo
 | :--- | :---: | :--- |
 | **Exactitud técnica** | **35%** | Código técnicamente correcto, patrones limpios, ejecución exitosa y tests de referencia. |
 | **Cumplimiento de la SPEC** | **25%** | Verificación requisito por requisito de la especificación activa. |
-| **Pruebas y evidencias** | **20%** | Cobertura de tests, trazabilidad a logs, archivos, compilación y pruebas deterministas. |
+| **Pruebas y evidencias** | **20%** | Cobertura exacta y branch coverage auditado por SonarQube (a partir de reportes LCOV/JaCoCo/Cobertura), trazabilidad a logs, archivos, compilación y pruebas deterministas. |
 | **Contratos e integración** | **15%** | Compatibilidad de esquemas, DTOs, tipado estricto e interoperabilidad entre módulos. |
 | **Eficiencia** | **5%** | Tokens, latencia, simplicidad y coste por tarea (peso bajo para no premiar rapidez sobre calidad). |
 
@@ -142,7 +142,18 @@ Todo agente especialista y evaluador debe entregar su resultado estructurado seg
         "status": "passed",
         "evidence": "tests/unit/api_client.test.ts::test_send_message"
       }
-    ]
+    ],
+    "sonarqube": {
+      "quality_gate": "OK",
+      "line_coverage": 88.5,
+      "branch_coverage": 83.0,
+      "combined_coverage": 86.2,
+      "uncovered_lines": 4,
+      "duplicated_lines_density": 0.4,
+      "security_rating": "A",
+      "reliability_rating": "A",
+      "maintainability_rating": "A"
+    }
   },
   "evaluation": {
     "accuracy": 94,
@@ -215,8 +226,8 @@ Para evitar el consumo desmedido de tokens analizando sintaxis o simulando petic
 | **GATE 0** | `scripts/gates/g0-mock-server.sh` | **Stoplight Prism** | Levantar mocks locales para desbloquear al frontend en paralelo. |
 | **GATE 1** | `scripts/gates/g1-static-check.sh` | **tsc / Biome / Ruff** | Typecheck y linter del código con 0 warnings/errores. |
 | **GATE 2** | `scripts/gates/g2-contract-test.sh` | **Schemathesis** | Ejecutar contract fuzzing contra los endpoints. Exigir **Zero Spec Drift**. |
-| **GATE 4** | `scripts/gates/g4-test-and-security.sh` | **Semgrep + Tests** | Ejecutar suite de pruebas con umbral de cobertura y análisis SAST de seguridad. |
-| **GATE 5** | `scripts/gates/g5-metrics-summary.sh` | **Consolidador SDD** | Emitir el resumen formal en JSON ultra compacto (< 30 tokens). |
+| **GATE 4** | `scripts/gates/g4-test-and-security.sh` + `scripts/gates/g4-sonarqube-analysis.sh` | **SonarQube + Semgrep + Tests** | Ejecutar suite de pruebas con exportación LCOV/cobertura, auditoría de cobertura exacta (líneas y ramas) con SonarQube (`g4-sonarqube-analysis.sh`) y análisis SAST con Semgrep. Exigir SonarQube Quality Gate `OK`. |
+| **GATE 5** | `scripts/gates/g5-metrics-summary.sh` | **Consolidador SDD** | Emitir el resumen formal en JSON ultra compacto con métricas exactas de SonarQube (< 35 tokens). |
 
 > [!IMPORTANT]
 > **Principio "Deterministic First, LLM Last":** Ningún agente debe hacer suposiciones si puede ejecutar el script correspondiente en milisegundos con `run_command`. La salida de los scripts es la evidencia de auditoría oficial.

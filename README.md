@@ -69,8 +69,8 @@ Los modelos de lenguaje no deben desperdiciar tokens analizando sintaxis de 2,00
 | **GATE 1** | **Agent Quality Gate** | Evaluador independiente | Exactitud ≥ 90/100, linter limpio, 0 fallos críticos. | `scripts/gates/g1-static-check.sh` |
 | **GATE 2** | **Contract Gate** | Evaluador de contratos | **Zero Spec Drift**. 100% de contratos válidos. | `scripts/gates/g2-contract-test.sh` |
 | **GATE 3** | **Integration Gate** | Evaluador de integración | 100% de flujos E2E críticos aprobados. | Test suite de integración |
-| **GATE 4** | **Test & SAST Gate** | `qa-agent` + `security-agent` | Cobertura ≥ 80%, 0 vulnerabilidades de seguridad. | `scripts/gates/g4-test-and-security.sh` |
-| **GATE 5** | **Release Gate** | Evaluador final | Score global ≥ 90/100, aprobación unánime de gates. | `scripts/gates/g5-metrics-summary.sh` |
+| **GATE 4** | **Test, Coverage & Security Gate** | `qa-agent` + `quality-gate-evaluator` | Cobertura exacta SonarQube (Line y Branch ≥ 80%), SonarQube QG `OK`, 0 vulnerabilidades. | `scripts/gates/g4-test-and-security.sh` (`g4-sonarqube-analysis.sh`) |
+| **GATE 5** | **Release Gate** | Evaluador final | Score global ≥ 90/100, SonarQube QG aprobado, aprobación unánime de gates. | `scripts/gates/g5-metrics-summary.sh` |
 
 ---
 
@@ -81,6 +81,7 @@ El repositorio incluye automatizaciones preconfiguradas con herramientas lídere
 2. **Stoplight Prism**: Servidor mock local instantáneo que levanta un backend falso desde la spec para que el frontend empiece a trabajar sin esperar al backend.
 3. **Schemathesis**: Property-based contract testing que bombardea la API con casos límite reales para asegurar que no haya diferencias entre la spec y el código (Zero Drift).
 4. **Semgrep**: Análisis estático de seguridad (SAST) ultra ligero para el Gate 4.
+5. **SonarQube / SonarScanner**: Auditoría determinista de cobertura exacta (Líneas y Ramas/Condiciones) y validación estricta de Quality Gate (Line & Branch Coverage ≥ 80%, 0 vulnerabilidades, duplicación ≤ 3%).
 
 ---
 

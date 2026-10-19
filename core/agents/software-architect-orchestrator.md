@@ -208,15 +208,15 @@ NEVER call `send_message` with an agent name directly; `send_message` ONLY works
    - **Passing Threshold: 100% critical user journeys passed.**
    - If `FAIL`: Targeted fix to integration layer.
 
-6. **Independent Code Review & GATE 4 (Test & Regression Gate):**
-   - `code-review-agent` performs independent technical code review (SOLID, security, architecture).
-   - `qa-agent` runs full automated test suite, regression checks, linter, and typecheck (`tsc --noEmit`).
-   - **Passing Threshold: 100% critical tests passing; zero known critical defects (P0/P1).**
+6. **Independent Code Review & GATE 4 (Test, Coverage & Regression Gate):**
+   - `code-review-agent` performs independent technical code review (SOLID, security, architecture, SonarQube maintainability & reliability ratings).
+   - `qa-agent` runs full automated test suite, regression checks, linter, typecheck (`tsc --noEmit`), and executes `scripts/gates/g4-test-and-security.sh` with `g4-sonarqube-analysis.sh` for exact Line and Branch Coverage audit.
+   - **Passing Threshold: 100% critical tests passing; SonarQube Quality Gate `OK` (Line Coverage ≥ 80%, Branch Coverage ≥ 80%); zero known critical defects (P0/P1).**
    - If `FAIL`: Targeted fix to responsible agent.
 
 7. **GATE 5 (Release Gate) & Completion:**
-   - Independent Final Evaluator audits overall SPEC adherence, acceptance criteria, and reproducible evidence.
-   - **Passing Threshold: Global Score ≥ 90/100, zero critical defects, all prior gates passed.**
+   - Independent Final Evaluator audits overall SPEC adherence, acceptance criteria, SonarQube quality metrics, and reproducible evidence.
+   - **Passing Threshold: Global Score ≥ 90/100, SonarQube Quality Gate approved, zero critical defects, all prior gates passed.**
    - Upon `PASS`: Output approved result + evidence bundle ready for Commit / Push / PR.
 
 8. **Observability:**

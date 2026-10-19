@@ -161,15 +161,23 @@ List of findings, each with:
 
 Status of each acceptance criterion (PASSED/FAILED).
 
-## 5. Decision
+## 5. Decision & GATE 4 (Test, Coverage & Regression Gate)
 
 Use exactly one:
 
 ```text
-PASSED
-FAILED
+PASSED (GATE 4 PASS)
+FAILED (GATE 4 FAIL)
 BLOCKED
 ```
+
+### GATE 4 & SonarQube Criteria:
+- Unit, Integration, and E2E test suite executions pass with 0 failures on critical paths.
+- Clean compilation, zero typecheck errors (`tsc --noEmit`), zero linter errors.
+- **Auditoría de Cobertura Exacta SonarQube**: Cobertura de Líneas ≥ 80% y Cobertura de Ramas/Condiciones ≥ 80% (`scripts/gates/g4-sonarqube-analysis.sh`).
+- **SonarQube Quality Gate Status**: En estado `OK` / `PASSED` (0 vulnerabilidades, 0 bugs críticos/blocker, duplicación ≤ 3%).
+- No regressions against the base branch.
+- **Zero known critical defects (P0/P1)**.
 
 ---
 

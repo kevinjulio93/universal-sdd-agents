@@ -173,7 +173,7 @@ List of findings, each with:
 
 Status of each acceptance criterion (PASSED/FAILED).
 
-## 5. Decision & GATE 4 (Test & Regression Gate)
+## 5. Decision & GATE 4 (Test, Coverage & Regression Gate)
 
 Use exactly one:
 
@@ -186,6 +186,8 @@ BLOCKED
 ### GATE 4 Criteria:
 - Unit, Integration, and E2E test suite executions pass with 0 failures on critical paths.
 - Clean compilation, zero typecheck errors (`tsc --noEmit`), zero linter errors.
+- **Auditoría de Cobertura Exacta SonarQube**: Cobertura de Líneas ≥ 80% y Cobertura de Ramas/Condiciones ≥ 80% comprobada mediante `scripts/gates/g4-sonarqube-analysis.sh` o `sonar-scanner`.
+- **SonarQube Quality Gate Status**: En estado `OK` / `PASSED` (0 vulnerabilidades, 0 bugs críticos/blocker, duplicación ≤ 3%).
 - No regressions against the base branch.
 - **Zero known critical defects (P0/P1)**. Any critical defect immediately fails GATE 4 and triggers targeted fix.
 
@@ -218,7 +220,18 @@ Deliver the standardized evaluation contract:
         "status": "passed",
         "evidence": "35/35 automated tests passing; tsc clean; 0 regressions"
       }
-    ]
+    ],
+    "sonarqube": {
+      "quality_gate": "OK",
+      "line_coverage": 89.2,
+      "branch_coverage": 84.5,
+      "combined_coverage": 87.3,
+      "uncovered_lines": 5,
+      "duplicated_lines_density": 0.2,
+      "security_rating": "A",
+      "reliability_rating": "A",
+      "maintainability_rating": "A"
+    }
   },
   "evaluation": {
     "accuracy": 96,
@@ -228,7 +241,7 @@ Deliver the standardized evaluation contract:
     "decision": "PASSED"
   },
   "gate": {
-    "name": "GATE 4: Test & Regression Gate",
+    "name": "GATE 4: Test, Coverage & Regression Gate",
     "status": "PASS",
     "threshold": 100
   }

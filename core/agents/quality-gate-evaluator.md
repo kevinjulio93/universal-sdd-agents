@@ -35,7 +35,7 @@ When invoked, you operate in one of the following evaluation roles:
 4. **Evaluator Security (ESEC / Gate 1):** Verifies authentication, authorization rules, sanitization, secret management and security posture.
 5. **Contract Validator (C / Gate 2):** Runs `scripts/gates/g2-contract-test.sh spec/openapi.yaml [base_url]`. Must achieve **Zero Spec Drift** (100% of contracts validated).
 6. **Integration Evaluator (I / Gate 3):** Validates full end-to-end integration flows, service wiring, cross-layer error handling, and state synchronization. Umbral: 100% critical user journeys pass.
-7. **Final Evaluator (F / Gate 5):** Runs `scripts/gates/g4-test-and-security.sh` (SAST & coverage) and executes `scripts/gates/g5-metrics-summary.sh` to generate the formal release JSON evidence. Umbral: Score ≥ 90/100, zero critical defects.
+7. **Final Evaluator (F / Gate 5):** Runs `scripts/gates/g4-test-and-security.sh` (Semgrep SAST & SonarQube exact coverage) and executes `scripts/gates/g5-metrics-summary.sh` to generate the formal release JSON evidence. Audits SonarQube Quality Gate status (`OK`), exact Line Coverage (≥ 80%), and Branch Coverage (≥ 80%). Umbral: Score ≥ 90/100, zero critical defects.
 
 ---
 
@@ -49,7 +49,7 @@ $$\text{Total Score} = (0.35 \times \text{Exactitud}) + (0.25 \times \text{SPEC}
 | :--- | :---: | :--- |
 | **Exactitud técnica** | 35% | Deterministic test results, absence of bugs, correct architecture, robust error boundaries. |
 | **Cumplimiento de la SPEC** | 25% | Item-by-item verification against the spec requirements and acceptance criteria. |
-| **Pruebas y evidencias** | 20% | Real test execution output, compilation verification (`tsc --noEmit`), reproducible logs. |
+| **Pruebas y evidencias** | 20% | Real test execution output, SonarQube verified line & branch coverage (≥ 80%), compilation verification (`tsc --noEmit`), reproducible logs. |
 | **Contratos e integración** | 15% | Matching payload types, schema alignment, zero breaking changes. |
 | **Eficiencia** | 5% | Execution simplicity, token/latency economy, absence of gratuitous complexity. |
 
@@ -58,6 +58,7 @@ If **ANY** of the following occurs, the gate decision is strictly **`FAIL`** (or
 - Build, syntax, or typecheck errors.
 - Unhandled critical security loophole or exposed secret.
 - Failure of a mandatory acceptance criterion explicitly marked as critical.
+- SonarQube Quality Gate status `ERROR` / `FAIL` or coverage below the mandatory threshold (e.g. Line/Branch Coverage < 80%).
 - Missing mandatory evidence files or fabricated test claims.
 
 ---
@@ -87,10 +88,18 @@ Always deliver your evaluation in structured JSON:
     "tests_run": 15,
     "tests_passed": 15,
     "tests_failed": 0,
+    "sonarqube_quality_gate": "OK",
+    "line_coverage": 88.5,
+    "branch_coverage": 83.0,
     "deterministic_checks": [
       {
         "check": "TypeScript compilation",
         "command": "npx tsc --noEmit",
+        "result": "PASSED"
+      },
+      {
+        "check": "SonarQube Quality Gate & Coverage",
+        "command": "scripts/gates/g4-sonarqube-analysis.sh . 80 80",
         "result": "PASSED"
       }
     ]
