@@ -85,16 +85,14 @@ function checkDockerSonarContainer() {
 }
 
 // -----------------------------------------------------------------------------
-// SUB-ROUTINE: Diagnóstico de Entorno (Doctor)
+// SUB-ROUTINE: Diagnóstico y Resolución Interactiva de Dependencias
 // -----------------------------------------------------------------------------
-async function runDoctor() {
-  const s = spinner();
-  s.start('Ejecutando diagnóstico del sistema...');
-
+async function getDiagnosticChecks() {
   const checks = [];
 
   // Node & NPM
   checks.push({
+    id: 'node',
     name: 'Node.js',
     ok: true,
     detail: process.version
@@ -103,55 +101,278 @@ async function runDoctor() {
   // Docker
   const dockerOk = hasCommand('docker');
   checks.push({
+    id: 'docker',
     name: 'Docker CLI',
     ok: dockerOk,
-    detail: dockerOk ? 'Instalado' : 'No encontrado (opcional para SonarQube local)'
+    detail: dockerOk ? 'Instalado' : 'No encontrado (requerido para SonarQube local en contenedor)'
   });
 
   // SonarQube Server
   const sonarStatus = await checkSonarServer();
   const sonarContainer = checkDockerSonarContainer();
+  const sonarOk = sonarStatus.reachable;
   checks.push({
+    id: 'sonar_server',
     name: 'SonarQube Server (http://localhost:9000)',
-    ok: sonarStatus.reachable,
-    detail: sonarStatus.reachable 
+    ok: sonarOk,
+    detail: sonarOk 
       ? `Activo (v${sonarStatus.version}, status: ${sonarStatus.status})` 
-      : (sonarContainer ? `Contenedor ${sonarContainer.name} detenido (${sonarContainer.status})` : 'Inactivo / No detectado')
+      : (sonarContainer ? `Contenedor '${sonarContainer.name}' detenido (${sonarContainer.status})` : 'Inactivo / No detectado')
   });
 
   // Sonar-Scanner CLI
   const scannerOk = hasCommand('sonar-scanner');
   checks.push({
+    id: 'sonar_scanner',
     name: 'SonarScanner CLI',
     ok: scannerOk,
-    detail: scannerOk ? 'Instalado en PATH' : 'No instalado (el motor local usará fallback determinista)'
+    detail: scannerOk ? 'Instalado en PATH' : 'No instalado (se recomienda para escaneos nativos de cobertura)'
   });
 
   // Semgrep
-  const semgrepOk = hasCommand('semgrep') || hasCommand('uvx');
+  const semgrepNative = hasCommand('semgrep');
+  const semgrepOk = semgrepNative || hasCommand('uvx') || hasCommand('uv');
   checks.push({
+    id: 'semgrep',
     name: 'Semgrep SAST (Gate 4)',
     ok: semgrepOk,
-    detail: semgrepOk ? 'Disponible' : 'Instalar uv/uvx o semgrep para SAST nativo'
+    detail: semgrepNative ? 'Instalado nativo' : (semgrepOk ? 'Disponible vía uvx' : 'No instalado')
   });
 
   // Schemathesis
-  const schemathesisOk = hasCommand('schemathesis') || hasCommand('uvx');
+  const schemathesisNative = hasCommand('schemathesis');
+  const schemathesisOk = schemathesisNative || hasCommand('uvx') || hasCommand('uv');
   checks.push({
+    id: 'schemathesis',
     name: 'Schemathesis (Gate 2: Contract Test)',
     ok: schemathesisOk,
-    detail: schemathesisOk ? 'Disponible' : 'Instalar schemathesis para contract testing'
+    detail: schemathesisNative ? 'Instalado nativo' : (schemathesisOk ? 'Disponible vía uvx' : 'No instalado')
   });
 
-  s.stop('Diagnóstico completado');
+  // Spectral
+  const spectralNative = hasCommand('spectral');
+  const spectralOk = spectralNative || hasCommand('npx');
+  checks.push({
+    id: 'spectral',
+    name: 'Stoplight Spectral (Gate 0: OpenAPI Linter)',
+    ok: spectralOk,
+    detail: spectralNative ? 'Instalado nativo' : (spectralOk ? 'Disponible vía npx' : 'No instalado')
+  });
 
+  return checks;
+}
+
+function printDiagnosticReport(checks, title = 'Resultados del Diagnóstico') {
   let report = '';
   checks.forEach(c => {
     const symbol = c.ok ? pc.green('✔') : pc.yellow('✖');
     report += `${symbol} ${pc.bold(c.name)}: ${c.detail}\n`;
   });
+  note(report.trim(), title);
+}
 
-  note(report.trim(), 'Resultados del Diagnóstico');
+async function resolveMissingDependencies(missingItems) {
+  if (!missingItems || missingItems.length === 0) return;
+
+  log.warn(pc.yellow(`⚠️ Se detectaron ${missingItems.length} componente(s) pendientes o faltantes en el sistema.`));
+
+  const wantToInstall = checkCancel(await confirm({
+    message: '¿Deseas instalar o iniciar las herramientas faltantes ahora?',
+    initialValue: true
+  }));
+
+  if (!wantToInstall) return;
+
+  for (const item of missingItems) {
+    // 1. SonarScanner CLI
+    if (item.id === 'sonar_scanner') {
+      const doInstall = checkCancel(await confirm({
+        message: '¿Instalar SonarScanner CLI para auditoría exacta de código?',
+        initialValue: true
+      }));
+
+      if (doInstall) {
+        const s = spinner();
+        if (hasCommand('brew')) {
+          s.start('Instalando sonar-scanner vía Homebrew (brew install sonar-scanner)...');
+          try {
+            execSync('brew install sonar-scanner', { stdio: 'inherit' });
+            s.stop(pc.green('✔ SonarScanner CLI instalado correctamente.'));
+          } catch (e) {
+            s.stop(pc.red(`Error instalando con brew: ${e.message}`));
+          }
+        } else if (hasCommand('npm')) {
+          s.start('Instalando sonarqube-scanner vía npm global...');
+          try {
+            execSync('npm install -g sonarqube-scanner', { stdio: 'inherit' });
+            s.stop(pc.green('✔ sonarqube-scanner instalado correctamente vía npm.'));
+          } catch (e) {
+            s.stop(pc.red(`Error instalando con npm: ${e.message}`));
+          }
+        } else {
+          log.warn(pc.yellow('No se encontró brew ni npm para instalar sonar-scanner automáticamente.'));
+        }
+      }
+    }
+
+    // 2. Servidor SonarQube
+    else if (item.id === 'sonar_server') {
+      const dockerContainer = checkDockerSonarContainer();
+
+      if (dockerContainer && !dockerContainer.running) {
+        const doStart = checkCancel(await confirm({
+          message: `¿Deseas iniciar el contenedor detenido '${dockerContainer.name}'?`,
+          initialValue: true
+        }));
+        if (doStart) {
+          const s = spinner();
+          s.start(`Iniciando contenedor ${dockerContainer.name}...`);
+          try {
+            execSync(`docker start ${dockerContainer.name}`, { stdio: 'ignore' });
+            s.stop(pc.green(`✔ Contenedor ${dockerContainer.name} iniciado en http://localhost:9000`));
+          } catch (e) {
+            s.stop(pc.red('Error iniciando contenedor'));
+          }
+        }
+      } else if (hasCommand('docker')) {
+        const doLaunch = checkCancel(await confirm({
+          message: '¿Deseas desplegar e iniciar SonarQube Community en Docker (puerto 9000)?',
+          initialValue: true
+        }));
+        if (doLaunch) {
+          const s = spinner();
+          s.start('Lanzando contenedor sonarqube:community en puerto 9000...');
+          try {
+            execSync('docker run -d --name sonarqube -p 9000:9000 sonarqube:community', { stdio: 'ignore' });
+            s.stop(pc.green('✔ Contenedor SonarQube lanzado. Estará activo en http://localhost:9000'));
+          } catch (e) {
+            s.stop(pc.red(`Error lanzando contenedor: ${e.message}`));
+          }
+        }
+      } else {
+        log.warn(pc.yellow('Docker no está disponible para iniciar SonarQube automáticamente.'));
+      }
+    }
+
+    // 3. Semgrep SAST
+    else if (item.id === 'semgrep') {
+      const doInstall = checkCancel(await confirm({
+        message: '¿Instalar Semgrep (SAST nativo para Gate 4)?',
+        initialValue: true
+      }));
+      if (doInstall) {
+        const s = spinner();
+        s.start('Instalando Semgrep...');
+        try {
+          if (hasCommand('brew')) {
+            s.message('Instalando vía Homebrew (brew install semgrep)...');
+            execSync('brew install semgrep', { stdio: 'inherit' });
+            s.stop(pc.green('✔ Semgrep instalado exitosamente vía Homebrew.'));
+          } else if (hasCommand('uv')) {
+            s.message('Instalando vía uv (uv tool install semgrep)...');
+            execSync('uv tool install semgrep', { stdio: 'inherit' });
+            s.stop(pc.green('✔ Semgrep instalado exitosamente vía uv.'));
+          } else if (hasCommand('pip3')) {
+            s.message('Instalando vía pip3 (pip3 install semgrep)...');
+            execSync('pip3 install semgrep', { stdio: 'inherit' });
+            s.stop(pc.green('✔ Semgrep instalado exitosamente vía pip3.'));
+          }
+        } catch (e) {
+          s.stop(pc.red(`Error instalando Semgrep: ${e.message}`));
+        }
+      }
+    }
+
+    // 4. Schemathesis
+    else if (item.id === 'schemathesis') {
+      const doInstall = checkCancel(await confirm({
+        message: '¿Instalar Schemathesis (Contract Testing para Gate 2)?',
+        initialValue: true
+      }));
+      if (doInstall) {
+        const s = spinner();
+        s.start('Instalando Schemathesis...');
+        try {
+          if (hasCommand('uv')) {
+            s.message('Instalando vía uv (uv tool install schemathesis)...');
+            execSync('uv tool install schemathesis', { stdio: 'inherit' });
+            s.stop(pc.green('✔ Schemathesis instalado exitosamente vía uv.'));
+          } else if (hasCommand('brew')) {
+            s.message('Instalando vía Homebrew (brew install schemathesis)...');
+            execSync('brew install schemathesis', { stdio: 'inherit' });
+            s.stop(pc.green('✔ Schemathesis instalado exitosamente vía Homebrew.'));
+          } else if (hasCommand('pip3')) {
+            s.message('Instalando vía pip3 (pip3 install schemathesis)...');
+            execSync('pip3 install schemathesis', { stdio: 'inherit' });
+            s.stop(pc.green('✔ Schemathesis instalado exitosamente vía pip3.'));
+          }
+        } catch (e) {
+          s.stop(pc.red(`Error instalando Schemathesis: ${e.message}`));
+        }
+      }
+    }
+
+    // 5. Spectral
+    else if (item.id === 'spectral') {
+      const doInstall = checkCancel(await confirm({
+        message: '¿Instalar Stoplight Spectral CLI globalmente (Gate 0 OpenAPI Linter)?',
+        initialValue: true
+      }));
+      if (doInstall) {
+        const s = spinner();
+        s.start('Instalando @stoplight/spectral-cli vía npm...');
+        try {
+          execSync('npm install -g @stoplight/spectral-cli', { stdio: 'inherit' });
+          s.stop(pc.green('✔ Spectral CLI instalado exitosamente.'));
+        } catch (e) {
+          s.stop(pc.red(`Error instalando Spectral CLI: ${e.message}`));
+        }
+      }
+    }
+
+    // 6. Docker CLI
+    else if (item.id === 'docker') {
+      const doInstall = checkCancel(await confirm({
+        message: '¿Instalar Docker Desktop en macOS mediante Homebrew?',
+        initialValue: false
+      }));
+      if (doInstall && hasCommand('brew')) {
+        const s = spinner();
+        s.start('Instalando Docker Desktop (brew install --cask docker)...');
+        try {
+          execSync('brew install --cask docker', { stdio: 'inherit' });
+          s.stop(pc.green('✔ Docker Desktop instalado. Abre la aplicación para iniciar el daemon.'));
+        } catch (e) {
+          s.stop(pc.red(`Error instalando Docker: ${e.message}`));
+        }
+      }
+    }
+  }
+}
+
+async function runDoctor() {
+  const s = spinner();
+  s.start('Ejecutando diagnóstico del sistema...');
+  let checks = await getDiagnosticChecks();
+  s.stop('Diagnóstico completado');
+
+  printDiagnosticReport(checks, 'Resultados del Diagnóstico');
+
+  // Identificar herramientas faltantes
+  const missing = checks.filter(c => !c.ok);
+
+  if (missing.length > 0) {
+    await resolveMissingDependencies(missing);
+
+    // Re-evaluar estado tras la resolución
+    const s2 = spinner();
+    s2.start('Actualizando estado del diagnóstico...');
+    checks = await getDiagnosticChecks();
+    s2.stop('Diagnóstico actualizado');
+    printDiagnosticReport(checks, 'Estado Actualizado tras Instalación');
+  } else {
+    log.success(pc.green('✔ ¡Todos los componentes para el flujo SDD y SonarQube están en perfecto orden!'));
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -522,6 +743,20 @@ async function main() {
     await runDoctor();
     outro(pc.green('Diagnóstico finalizado. Ejecuta de nuevo para instalar o actualizar.'));
     process.exit(0);
+  }
+
+  // Pre-flight check automático en instalación completa
+  if (action === 'full') {
+    const sPre = spinner();
+    sPre.start('Comprobando dependencias del entorno...');
+    const preChecks = await getDiagnosticChecks();
+    sPre.stop('Comprobación de dependencias finalizada');
+
+    const missing = preChecks.filter(c => !c.ok);
+    if (missing.length > 0) {
+      printDiagnosticReport(preChecks, 'Pre-flight Check de Dependencias');
+      await resolveMissingDependencies(missing);
+    }
   }
 
   // Paso 2: Scope / Alcance
