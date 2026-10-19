@@ -4,6 +4,7 @@
   "description": "Interactive CLI for Universal Spec-Driven Development Multi-Agent Ecosystem",
   "bin": {
     "sdd": "./bin/sdd.js",
+    "ssd": "./bin/sdd.js",
     "universal-sdd": "./bin/sdd.js"
   },
   "scripts": {
