@@ -96,49 +96,59 @@ Puedes exportar o sincronizar este ecosistema hacia cualquier entorno de IA:
 
 ---
 
-## ⚡ Instalación Rápida con CLI Interactivo
+## ⚡ Instalación Rápida con TUI CLI Interactivo
 
-El repositorio incluye un **CLI Scaffolder interactivo (`sdd`)** con cero dependencias externas para configurar cualquier harness y especializar a los agentes según el lenguaje de tu proyecto.
+El repositorio incluye un **TUI CLI Interactivo (`sdd`)** con interfaz moderna de terminal (navegación por flechas, selección múltiple, spinners y diagnósticos en vivo) para desplegar el flujo SDD completo y gestionar SonarQube.
 
 ### 1. Clonar el repositorio
 ```bash
 git clone git@github.com:kevinjulio93/universal-sdd-agents.git
 cd universal-sdd-agents
-cp .env.example .env
+npm install
+npm link # Enlaza el comando 'sdd' globalmente
 ```
 
 ### 2. Ejecutar el Asistente Interactivo
-Puedes ejecutarlo directamente con Node o instalarlo globalmente:
 ```bash
-npm start
-# O si lo enlazas con npm link:
 sdd
+# O modo diagnóstico del entorno:
+sdd --doctor
 ```
 
-El CLI te guiará con un menú interactivo en 3 pasos:
+El TUI te guiará paso a paso con selección interactiva:
 ```text
-================================================================
- 🚀 UNIVERSAL SDD AGENTS - CLI & SCAFFOLDER (v1.1.0)
- Spec-Driven Development | Quality Gates G0-G5 | Multi-Harness
-================================================================
-
-🌐 ¿Dónde deseas instalar o actualizar los agentes?
-  [1] 🌍 Global (Disponible en TODA tu máquina para cualquier proyecto que abras)
-  [2] 📁 Proyecto Actual (Solo para la carpeta actual donde ejecutas el comando)
-
-🎯 Selecciona el Harness de IA que deseas configurar o añadir:
-  [1] Google Antigravity (Plugin nativo ~/.agents)
-  [2] Cursor IDE (.cursor/rules/*.mdc, .cursorrules, mcp.json)
-  [3] Claude Code (CLAUDE.md modular)
-  [4] Windsurf / Cascade (.windsurfrules)
-  [5] Todos los anteriores (Full Ecosystem)
-
-💻 Selecciona el Lenguaje / Stack principal de tu proyecto:
-  [1] TypeScript / Node.js (Vitest, Biome/ESLint, tsc)
-  [2] Python (Pytest, Ruff, Mypy, FastAPI/Django)
-  [3] Go (go test, golangci-lint, Gin/Fiber)
-  [4] Java / Kotlin (JUnit 5, Maven/Gradle, Spring Boot)
-  [5] Agnóstico / Políglota (Sin stack predeterminado)
+┌   🚀 UNIVERSAL SPEC-DRIVEN DEVELOPMENT (SDD) - TUI CLI 
+│
+◇  ¿Qué deseas hacer hoy?
+│  ● 🚀 Instalación Completa del Flujo SDD (Recomendado)
+│  ○ 🤖 Desplegar o Actualizar solo Agentes y Adaptadores IA
+│  ○ 📊 Configurar / Iniciar SonarQube y Quality Gates (G4/G5)
+│  ○ 🩺 Diagnóstico del Entorno (Doctor)
+│
+◇  ¿Dónde deseas aplicar la configuración?
+│  ● 📁 Proyecto Actual (/path/to/project)
+│  ○ 🌍 Global en tu Mac (~/ y ~/.agents)
+│
+◇  Selecciona los Harnesses de IA que deseas aprovisionar:
+│  ◼ ✨ Todos los Harnesses (Ecosistema Completo)
+│  ◻ Google Antigravity (~/.agents + plugin nativo)
+│  ◻ Cursor IDE (.cursorrules, .cursor/rules/*.mdc, mcp.json)
+│  ◻ Claude Code (CLAUDE.md modular)
+│  ◻ Windsurf / Cascade (.windsurfrules)
+│  ◻ OpenCode (~/.config/opencode/agents)
+│
+◇  Selecciona el Stack o Lenguaje principal de este entorno:
+│  ● TypeScript / Node.js (Vitest/Jest con LCOV, Biome, tsc)
+│  ○ Python (Pytest con Cobertura XML, Ruff, Mypy)
+│  ○ Go (go test con coverage.out, golangci-lint)
+│  ○ Java / Spring Boot (JUnit 5, JaCoCo XML, Maven/Gradle)
+│  ○ Agnóstico / Políglota
+│
+◇  🔍 Auditoría y Aprovisionamiento de SonarQube:
+│  ✔ Detección automática en vivo (http://localhost:9000 o Docker)
+│  ✔ Opción para iniciar SonarQube Community automáticamente con Docker si no está activo
+│  ✔ Generación y personalización de sonar-project.properties según tu stack
+│  ✔ Fallback offline determinista ($0 tokens) sin necesidad de levantar servidor
 ```
 
 ### 🌍 Diferencia entre Modo Global y Modo Proyecto:

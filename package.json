@@ -21,5 +21,9 @@
     "windsurf"
   ],
   "author": "Kevin Julio Marquez",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@clack/prompts": "^1.8.1",
+    "picocolors": "^1.1.1"
+  }
 }
