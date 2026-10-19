@@ -32,7 +32,7 @@ const ADAPTERS_DIR = path.join(REPO_ROOT, 'adapters');
 const STACKS_DIR = path.join(CORE_DIR, 'stacks');
 const TOOLS_DIR = path.join(REPO_ROOT, 'tools');
 const SCRIPTS_DIR = path.join(REPO_ROOT, 'scripts');
-const HOME = process.env.HOME || '';
+const HOME = process.env.HOME || process.env.USERPROFILE || '';
 
 // Manejo seguro de cancelación en prompts
 function checkCancel(val, message = 'Instalación cancelada por el usuario.') {
@@ -51,6 +51,188 @@ function hasCommand(cmd) {
   } catch {
     return false;
   }
+}
+
+// Detección profunda de Sistema Operativo y Gestores de Paquetes
+function getPlatformInfo() {
+  const platform = process.platform; // 'darwin', 'linux', 'win32'
+  const isMac = platform === 'darwin';
+  const isLinux = platform === 'linux';
+  const isWindows = platform === 'win32';
+
+  let osName = 'Desconocido';
+  let pkgManager = 'none';
+
+  if (isMac) {
+    osName = 'macOS (Darwin)';
+    if (hasCommand('brew')) pkgManager = 'brew';
+    else if (hasCommand('port')) pkgManager = 'port';
+    else if (hasCommand('npm')) pkgManager = 'npm';
+  } else if (isLinux) {
+    let distro = 'Linux';
+    try {
+      if (fs.existsSync('/etc/os-release')) {
+        const osRel = fs.readFileSync('/etc/os-release', 'utf8');
+        const match = osRel.match(/PRETTY_NAME="?([^"\n]+)"?/);
+        if (match) distro = match[1];
+      }
+    } catch {}
+    osName = distro;
+
+    if (hasCommand('apt-get')) pkgManager = 'apt-get';
+    else if (hasCommand('dnf')) pkgManager = 'dnf';
+    else if (hasCommand('pacman')) pkgManager = 'pacman';
+    else if (hasCommand('zypper')) pkgManager = 'zypper';
+    else if (hasCommand('apk')) pkgManager = 'apk';
+    else if (hasCommand('brew')) pkgManager = 'brew';
+    else if (hasCommand('npm')) pkgManager = 'npm';
+  } else if (isWindows) {
+    osName = 'Windows';
+    if (hasCommand('winget')) pkgManager = 'winget';
+    else if (hasCommand('choco')) pkgManager = 'choco';
+    else if (hasCommand('scoop')) pkgManager = 'scoop';
+    else if (hasCommand('npm')) pkgManager = 'npm';
+  }
+
+  const pythonRunner = hasCommand('uv') ? 'uv' : (hasCommand('pipx') ? 'pipx' : (hasCommand('pip3') ? 'pip3' : (hasCommand('pip') ? 'pip' : null)));
+
+  return {
+    platform,
+    isMac,
+    isLinux,
+    isWindows,
+    osName,
+    arch: process.arch,
+    pkgManager,
+    pythonRunner
+  };
+}
+
+const platformInfo = getPlatformInfo();
+
+// Instaladores adaptados por Sistema Operativo
+async function installSonarScanner(s) {
+  if (platformInfo.isMac && hasCommand('brew')) {
+    s.message('Instalando sonar-scanner vía Homebrew...');
+    execSync('brew install sonar-scanner', { stdio: 'inherit' });
+    return;
+  }
+  if (platformInfo.isWindows) {
+    if (hasCommand('winget')) {
+      s.message('Instalando SonarScanner vía winget...');
+      execSync('winget install --id SonarSource.SonarScanner -e --accept-source-agreements --accept-package-agreements', { stdio: 'inherit' });
+      return;
+    }
+    if (hasCommand('choco')) {
+      s.message('Instalando sonar-scanner vía Chocolatey...');
+      execSync('choco install sonar-scanner-msbuild -y', { stdio: 'inherit' });
+      return;
+    }
+  }
+  if (platformInfo.isLinux && hasCommand('brew')) {
+    s.message('Instalando sonar-scanner vía Linuxbrew...');
+    execSync('brew install sonar-scanner', { stdio: 'inherit' });
+    return;
+  }
+  if (hasCommand('npm')) {
+    s.message('Instalando sonarqube-scanner vía npm global...');
+    execSync('npm install -g sonarqube-scanner', { stdio: 'inherit' });
+    return;
+  }
+  throw new Error(`No se encontró un gestor compatible en ${platformInfo.osName} para instalar sonar-scanner.`);
+}
+
+async function installDocker(s) {
+  if (platformInfo.isMac && hasCommand('brew')) {
+    s.message('Instalando Docker Desktop vía Homebrew Cask...');
+    execSync('brew install --cask docker', { stdio: 'inherit' });
+    return;
+  }
+  if (platformInfo.isWindows && hasCommand('winget')) {
+    s.message('Instalando Docker Desktop vía winget...');
+    execSync('winget install Docker.DockerDesktop', { stdio: 'inherit' });
+    return;
+  }
+  if (platformInfo.isLinux) {
+    if (hasCommand('apt-get')) {
+      s.message('Instalando docker.io vía apt-get...');
+      execSync('sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin', { stdio: 'inherit' });
+      return;
+    }
+    if (hasCommand('dnf')) {
+      s.message('Instalando docker vía dnf...');
+      execSync('sudo dnf install -y docker docker-compose', { stdio: 'inherit' });
+      return;
+    }
+    if (hasCommand('pacman')) {
+      s.message('Instalando docker vía pacman...');
+      execSync('sudo pacman -S --noconfirm docker docker-compose', { stdio: 'inherit' });
+      return;
+    }
+  }
+  throw new Error(`Instalación automática de Docker no disponible para ${platformInfo.osName}. Descárgalo desde https://www.docker.com/products/docker-desktop/`);
+}
+
+async function installSemgrep(s) {
+  if (platformInfo.isMac && hasCommand('brew')) {
+    s.message('Instalando Semgrep vía Homebrew...');
+    execSync('brew install semgrep', { stdio: 'inherit' });
+    return;
+  }
+  if (hasCommand('uv')) {
+    s.message('Instalando Semgrep vía uv...');
+    execSync('uv tool install semgrep', { stdio: 'inherit' });
+    return;
+  }
+  if (hasCommand('pip3')) {
+    s.message('Instalando Semgrep vía pip3...');
+    execSync('pip3 install semgrep', { stdio: 'inherit' });
+    return;
+  }
+  if (hasCommand('pip')) {
+    s.message('Instalando Semgrep vía pip...');
+    execSync('pip install semgrep', { stdio: 'inherit' });
+    return;
+  }
+  if (platformInfo.isWindows && hasCommand('winget')) {
+    s.message('Instalando Semgrep vía winget...');
+    execSync('winget install Semgrep.Semgrep', { stdio: 'inherit' });
+    return;
+  }
+  throw new Error('Instala uv, pip o brew para instalar Semgrep.');
+}
+
+async function installSchemathesis(s) {
+  if (hasCommand('uv')) {
+    s.message('Instalando Schemathesis vía uv...');
+    execSync('uv tool install schemathesis', { stdio: 'inherit' });
+    return;
+  }
+  if (platformInfo.isMac && hasCommand('brew')) {
+    s.message('Instalando Schemathesis vía Homebrew...');
+    execSync('brew install schemathesis', { stdio: 'inherit' });
+    return;
+  }
+  if (hasCommand('pip3')) {
+    s.message('Instalando Schemathesis vía pip3...');
+    execSync('pip3 install schemathesis', { stdio: 'inherit' });
+    return;
+  }
+  if (hasCommand('pip')) {
+    s.message('Instalando Schemathesis vía pip...');
+    execSync('pip install schemathesis', { stdio: 'inherit' });
+    return;
+  }
+  throw new Error('Instala uv, pip o brew para instalar Schemathesis.');
+}
+
+async function installSpectral(s) {
+  if (hasCommand('npm')) {
+    s.message('Instalando @stoplight/spectral-cli vía npm global...');
+    execSync('npm install -g @stoplight/spectral-cli', { stdio: 'inherit' });
+    return;
+  }
+  throw new Error('Se requiere npm para instalar Spectral CLI.');
 }
 
 async function checkSonarServer(url = 'http://localhost:9000') {
@@ -90,6 +272,14 @@ function checkDockerSonarContainer() {
 async function getDiagnosticChecks() {
   const checks = [];
 
+  // 0. Sistema Operativo y Arquitectura
+  checks.push({
+    id: 'os',
+    name: 'Sistema Operativo',
+    ok: true,
+    detail: `${platformInfo.osName} (${platformInfo.arch}) | Gestor: ${platformInfo.pkgManager} | Python: ${platformInfo.pythonRunner || 'no detectado'}`
+  });
+
   // Node & NPM
   checks.push({
     id: 'node',
@@ -104,7 +294,7 @@ async function getDiagnosticChecks() {
     id: 'docker',
     name: 'Docker CLI',
     ok: dockerOk,
-    detail: dockerOk ? 'Instalado' : 'No encontrado (requerido para SonarQube local en contenedor)'
+    detail: dockerOk ? 'Instalado' : `No encontrado (requerido para SonarQube local en contenedor en ${platformInfo.osName})`
   });
 
   // SonarQube Server
@@ -126,7 +316,7 @@ async function getDiagnosticChecks() {
     id: 'sonar_scanner',
     name: 'SonarScanner CLI',
     ok: scannerOk,
-    detail: scannerOk ? 'Instalado en PATH' : 'No instalado (se recomienda para escaneos nativos de cobertura)'
+    detail: scannerOk ? 'Instalado en PATH' : `No instalado (recomendado para auditoría en ${platformInfo.osName})`
   });
 
   // Semgrep
@@ -174,7 +364,7 @@ function printDiagnosticReport(checks, title = 'Resultados del Diagnóstico') {
 async function resolveMissingDependencies(missingItems) {
   if (!missingItems || missingItems.length === 0) return;
 
-  log.warn(pc.yellow(`⚠️ Se detectaron ${missingItems.length} componente(s) pendientes o faltantes en el sistema.`));
+  log.warn(pc.yellow(`⚠️ Se detectaron ${missingItems.length} componente(s) pendientes en ${platformInfo.osName}.`));
 
   const wantToInstall = checkCancel(await confirm({
     message: '¿Deseas instalar o iniciar las herramientas faltantes ahora?',
@@ -187,30 +377,18 @@ async function resolveMissingDependencies(missingItems) {
     // 1. SonarScanner CLI
     if (item.id === 'sonar_scanner') {
       const doInstall = checkCancel(await confirm({
-        message: '¿Instalar SonarScanner CLI para auditoría exacta de código?',
+        message: `¿Instalar SonarScanner CLI en ${platformInfo.osName}?`,
         initialValue: true
       }));
 
       if (doInstall) {
         const s = spinner();
-        if (hasCommand('brew')) {
-          s.start('Instalando sonar-scanner vía Homebrew (brew install sonar-scanner)...');
-          try {
-            execSync('brew install sonar-scanner', { stdio: 'inherit' });
-            s.stop(pc.green('✔ SonarScanner CLI instalado correctamente.'));
-          } catch (e) {
-            s.stop(pc.red(`Error instalando con brew: ${e.message}`));
-          }
-        } else if (hasCommand('npm')) {
-          s.start('Instalando sonarqube-scanner vía npm global...');
-          try {
-            execSync('npm install -g sonarqube-scanner', { stdio: 'inherit' });
-            s.stop(pc.green('✔ sonarqube-scanner instalado correctamente vía npm.'));
-          } catch (e) {
-            s.stop(pc.red(`Error instalando con npm: ${e.message}`));
-          }
-        } else {
-          log.warn(pc.yellow('No se encontró brew ni npm para instalar sonar-scanner automáticamente.'));
+        s.start(`Instalando SonarScanner CLI para ${platformInfo.osName}...`);
+        try {
+          await installSonarScanner(s);
+          s.stop(pc.green('✔ SonarScanner CLI instalado correctamente.'));
+        } catch (e) {
+          s.stop(pc.red(`Error instalando SonarScanner: ${e.message}`));
         }
       }
     }
@@ -250,33 +428,22 @@ async function resolveMissingDependencies(missingItems) {
           }
         }
       } else {
-        log.warn(pc.yellow('Docker no está disponible para iniciar SonarQube automáticamente.'));
+        log.warn(pc.yellow(`Docker no está disponible en ${platformInfo.osName} para iniciar SonarQube automáticamente.`));
       }
     }
 
     // 3. Semgrep SAST
     else if (item.id === 'semgrep') {
       const doInstall = checkCancel(await confirm({
-        message: '¿Instalar Semgrep (SAST nativo para Gate 4)?',
+        message: `¿Instalar Semgrep (SAST nativo para Gate 4 en ${platformInfo.osName})?`,
         initialValue: true
       }));
       if (doInstall) {
         const s = spinner();
-        s.start('Instalando Semgrep...');
+        s.start(`Instalando Semgrep en ${platformInfo.osName}...`);
         try {
-          if (hasCommand('brew')) {
-            s.message('Instalando vía Homebrew (brew install semgrep)...');
-            execSync('brew install semgrep', { stdio: 'inherit' });
-            s.stop(pc.green('✔ Semgrep instalado exitosamente vía Homebrew.'));
-          } else if (hasCommand('uv')) {
-            s.message('Instalando vía uv (uv tool install semgrep)...');
-            execSync('uv tool install semgrep', { stdio: 'inherit' });
-            s.stop(pc.green('✔ Semgrep instalado exitosamente vía uv.'));
-          } else if (hasCommand('pip3')) {
-            s.message('Instalando vía pip3 (pip3 install semgrep)...');
-            execSync('pip3 install semgrep', { stdio: 'inherit' });
-            s.stop(pc.green('✔ Semgrep instalado exitosamente vía pip3.'));
-          }
+          await installSemgrep(s);
+          s.stop(pc.green('✔ Semgrep instalado exitosamente.'));
         } catch (e) {
           s.stop(pc.red(`Error instalando Semgrep: ${e.message}`));
         }
@@ -286,26 +453,15 @@ async function resolveMissingDependencies(missingItems) {
     // 4. Schemathesis
     else if (item.id === 'schemathesis') {
       const doInstall = checkCancel(await confirm({
-        message: '¿Instalar Schemathesis (Contract Testing para Gate 2)?',
+        message: `¿Instalar Schemathesis (Contract Testing en ${platformInfo.osName})?`,
         initialValue: true
       }));
       if (doInstall) {
         const s = spinner();
-        s.start('Instalando Schemathesis...');
+        s.start(`Instalando Schemathesis en ${platformInfo.osName}...`);
         try {
-          if (hasCommand('uv')) {
-            s.message('Instalando vía uv (uv tool install schemathesis)...');
-            execSync('uv tool install schemathesis', { stdio: 'inherit' });
-            s.stop(pc.green('✔ Schemathesis instalado exitosamente vía uv.'));
-          } else if (hasCommand('brew')) {
-            s.message('Instalando vía Homebrew (brew install schemathesis)...');
-            execSync('brew install schemathesis', { stdio: 'inherit' });
-            s.stop(pc.green('✔ Schemathesis instalado exitosamente vía Homebrew.'));
-          } else if (hasCommand('pip3')) {
-            s.message('Instalando vía pip3 (pip3 install schemathesis)...');
-            execSync('pip3 install schemathesis', { stdio: 'inherit' });
-            s.stop(pc.green('✔ Schemathesis instalado exitosamente vía pip3.'));
-          }
+          await installSchemathesis(s);
+          s.stop(pc.green('✔ Schemathesis instalado exitosamente.'));
         } catch (e) {
           s.stop(pc.red(`Error instalando Schemathesis: ${e.message}`));
         }
@@ -322,7 +478,7 @@ async function resolveMissingDependencies(missingItems) {
         const s = spinner();
         s.start('Instalando @stoplight/spectral-cli vía npm...');
         try {
-          execSync('npm install -g @stoplight/spectral-cli', { stdio: 'inherit' });
+          await installSpectral(s);
           s.stop(pc.green('✔ Spectral CLI instalado exitosamente.'));
         } catch (e) {
           s.stop(pc.red(`Error instalando Spectral CLI: ${e.message}`));
@@ -333,15 +489,15 @@ async function resolveMissingDependencies(missingItems) {
     // 6. Docker CLI
     else if (item.id === 'docker') {
       const doInstall = checkCancel(await confirm({
-        message: '¿Instalar Docker Desktop en macOS mediante Homebrew?',
+        message: `¿Instalar Docker en ${platformInfo.osName}?`,
         initialValue: false
       }));
-      if (doInstall && hasCommand('brew')) {
+      if (doInstall) {
         const s = spinner();
-        s.start('Instalando Docker Desktop (brew install --cask docker)...');
+        s.start(`Instalando Docker para ${platformInfo.osName}...`);
         try {
-          execSync('brew install --cask docker', { stdio: 'inherit' });
-          s.stop(pc.green('✔ Docker Desktop instalado. Abre la aplicación para iniciar el daemon.'));
+          await installDocker(s);
+          s.stop(pc.green('✔ Docker instalado. Inicia el servicio/aplicación Docker para usar contenedores.'));
         } catch (e) {
           s.stop(pc.red(`Error instalando Docker: ${e.message}`));
         }
@@ -432,11 +588,11 @@ async function handleSonarQubeSetup(targetProjectDir, selectedStack) {
           label: '📄 Generar docker-compose.sonarqube.yml en el proyecto',
           hint: 'Podrás levantarlo cuando desees con docker compose up -d'
         },
-        ...(hasCommand('brew') ? [
+        ...(!hasCommand('sonar-scanner') ? [
           {
-            value: 'brew_scanner',
-            label: '📦 Instalar SonarScanner CLI mediante Homebrew (brew install sonar-scanner)',
-            hint: 'Instala la CLI nativa para macOS'
+            value: 'install_scanner',
+            label: `📦 Instalar SonarScanner CLI para ${platformInfo.osName} (${platformInfo.pkgManager !== 'none' ? platformInfo.pkgManager : 'npm'})`,
+            hint: `Instala la herramienta oficial de análisis para ${platformInfo.osName}`
           }
         ] : []),
         {
@@ -470,14 +626,14 @@ async function handleSonarQubeSetup(targetProjectDir, selectedStack) {
       const composeDest = path.join(targetProjectDir, 'docker-compose.sonarqube.yml');
       fs.copyFileSync(path.join(TOOLS_DIR, 'docker-compose.sonarqube.yml'), composeDest);
       log.success(pc.green(`✔ Plantilla generada en ${composeDest}. Ejecuta: docker compose -f docker-compose.sonarqube.yml up -d`));
-    } else if (sonarqubeChoice === 'brew_scanner') {
+    } else if (sonarqubeChoice === 'install_scanner' || sonarqubeChoice === 'brew_scanner') {
       const s = spinner();
-      s.start('Ejecutando: brew install sonar-scanner...');
+      s.start(`Instalando SonarScanner para ${platformInfo.osName}...`);
       try {
-        execSync('brew install sonar-scanner', { stdio: 'inherit' });
+        await installSonarScanner(s);
         s.stop(pc.green('SonarScanner CLI instalado correctamente.'));
       } catch (e) {
-        s.stop(pc.red('Fallo en la instalación con brew.'));
+        s.stop(pc.red(`Fallo en la instalación: ${e.message}`));
       }
     } else if (sonarqubeChoice === 'remote') {
       const remoteUrl = checkCancel(await text({
@@ -609,10 +765,12 @@ function deployHarnesses(selectedHarnesses, isGlobal, targetDir, stackSnippet, s
     fs.cpSync(path.join(REPO_ROOT, 'scripts'), path.join(agentsDest, 'scripts'), { recursive: true });
     fs.cpSync(path.join(REPO_ROOT, 'tools'), path.join(agentsDest, 'tools'), { recursive: true });
 
-    // Ensure executable permissions
-    try {
-      execSync(`chmod +x "${path.join(agentsDest, 'scripts', 'gates')}"/*.sh`, { stdio: 'ignore' });
-    } catch {}
+    // Ensure executable permissions on POSIX
+    if (!platformInfo.isWindows) {
+      try {
+        execSync(`chmod +x "${path.join(agentsDest, 'scripts', 'gates')}"/*.sh`, { stdio: 'ignore' });
+      } catch {}
+    }
 
     const mcpConfigSrc = path.join(ADAPTERS_DIR, 'antigravity', 'mcp_config.json');
     if (fs.existsSync(mcpConfigSrc)) {
@@ -629,7 +787,8 @@ function deployHarnesses(selectedHarnesses, isGlobal, targetDir, stackSnippet, s
       if (fs.existsSync(geminiPluginsDest)) {
         fs.rmSync(geminiPluginsDest, { recursive: true, force: true });
       }
-      fs.symlinkSync(agentsDest, geminiPluginsDest, 'dir');
+      const symlinkType = platformInfo.isWindows ? 'junction' : 'dir';
+      fs.symlinkSync(agentsDest, geminiPluginsDest, symlinkType);
     } catch (e) {
       fs.cpSync(agentsDest, geminiPluginsDest, { recursive: true });
     }
@@ -690,9 +849,11 @@ function deployHarnesses(selectedHarnesses, isGlobal, targetDir, stackSnippet, s
     fs.cpSync(path.join(REPO_ROOT, 'scripts', 'gates'), localGatesDest, { recursive: true });
     fs.cpSync(path.join(REPO_ROOT, 'tools'), localToolsDest, { recursive: true });
 
-    try {
-      execSync(`chmod +x "${localGatesDest}"/*.sh`, { stdio: 'ignore' });
-    } catch {}
+    if (!platformInfo.isWindows) {
+      try {
+        execSync(`chmod +x "${localGatesDest}"/*.sh`, { stdio: 'ignore' });
+      } catch {}
+    }
 
     log.success(pc.green(`✔ [Scripts & Quality Gates] Scripts deterministas instalados en ./scripts/gates/`));
   }
@@ -770,7 +931,7 @@ async function main() {
       },
       {
         value: 'global',
-        label: '🌍 Global en tu Mac (~/ y ~/.agents)',
+        label: `🌍 Global en tu sistema (${platformInfo.osName}) (~/ y ~/.agents)`,
         hint: 'Disponible para cualquier proyecto que abras en tu máquina'
       }
     ]
