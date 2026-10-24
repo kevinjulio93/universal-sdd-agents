@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "harness": "cursor",
+  "roles": {
+    "orchestrator": {
+      "description": "Coordinates SDD execution, owner sessions and independent checks; never implements or makes architecture decisions.",
+      "kind": "coordinator",
+      "write": [],
+      "shell": "validation",
+      "delegate": true
+    },
+    "software-architect": {
+      "description": "Decides architecture, boundaries and contracts at actual technical decision points.",
+      "kind": "reader",
+      "write": [],
+      "shell": false,
+      "delegate": false
+    },
+    "planner-agent": {
+      "description": "Decomposes approved specifications into owned tasks, dependencies and acceptance checks.",
+      "kind": "reader",
+      "write": [],
+      "shell": false,
+      "delegate": false
+    },
+    "spec-writer": {
+      "description": "Writes requirements, acceptance criteria and contracts in spec/ from approved decisions.",
+      "kind": "writer",
+      "write": [
+        "spec/**"
+      ],
+      "shell": false,
+      "delegate": false
+    },
+    "backend-agent": {
+      "description": "Implements assigned backend code and associated tests against approved contracts.",
+      "kind": "writer",
+      "write": [
+        "assigned"
+      ],
+      "shell": false,
+      "delegate": false
+    },
+    "frontend-agent": {
+      "description": "Implements assigned UI, accessibility and associated tests against approved contracts.",
+      "kind": "writer",
+      "write": [
+        "assigned"
+      ],
+      "shell": false,
+      "delegate": false
+    },
+    "database-agent": {
+      "description": "Implements assigned schemas, migrations and database tests against approved contracts.",
+      "kind": "writer",
+      "write": [
+        "assigned"
+      ],
+      "shell": false,
+      "delegate": false
+    },
+    "ai-engineer": {
+      "description": "Implements assigned LangGraph/LangChain workflows, provider integrations, AI runtime and tools against approved contracts.",
+      "kind": "writer",
+      "write": [
+        "assigned"
+      ],
+      "shell": false,
+      "delegate": false
+    },
+    "automation-integration-agent": {
+      "description": "Implements assigned n8n workflows, webhooks, bots and external automation integrations against approved contracts.",
+      "kind": "writer",
+      "write": [
+        "assigned"
+      ],
+      "shell": false,
+      "delegate": false
+    },
+    "security-agent": {
+      "description": "Independently audits changed trust boundaries and security regressions; never repairs code.",
+      "kind": "reader",
+      "write": [],
+      "shell": false,
+      "delegate": false
+    },
+    "code-review-agent": {
+      "description": "Strict adversarial read-only review of the actual task delta, contracts and regression evidence.",
+      "kind": "reader",
+      "write": [],
+      "shell": false,
+      "delegate": false
+    },
+    "qa-agent": {
+      "description": "Designs acceptance scenarios and audits functional evidence; requests checks through the coordinator.",
+      "kind": "reader",
+      "write": [],
+      "shell": false,
+      "delegate": false
+    },
+    "quality-gate-evaluator": {
+      "description": "Audits G0–G5 evidence, applicability and attribution independently; never invents scores or approval.",
+      "kind": "reader",
+      "write": [],
+      "shell": false,
+      "delegate": false
+    }
+  },
+  "enforcement": "advisory",
+  "limitations": [
+    "Generated rules are advisory; no per-role tool denial or file sandbox is enforced.",
+    "Durable subagent resume and global rule discovery are not assumed; explicitly import global rules."
+  ],
+  "reference": ".sdd/core/references/harness-support.md"
+}

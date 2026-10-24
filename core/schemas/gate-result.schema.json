@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SDD gate evidence v1",
+  "type": "object",
+  "required": ["version", "runId", "gate", "phase", "status", "startedAt", "finishedAt", "configDigest", "scope", "baseline", "checks", "findings", "debt", "gaps"],
+  "properties": {
+    "version": { "const": 1 },
+    "runId": { "type": ["string", "null"], "minLength": 1 },
+    "gate": { "enum": ["G0", "G1", "G2", "G3", "G4", "G5", null] },
+    "phase": { "enum": ["before", "after"] },
+    "status": { "enum": ["PASS", "FAIL", "BLOCKED", "NOT_APPLICABLE"] },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "configDigest": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "scope": { "type": ["object", "null"], "required": ["files", "hashes", "digest", "baselineDigest"], "properties": {
+      "files": { "type": "array", "items": { "type": "string" } },
+      "hashes": { "type": "object", "additionalProperties": { "type": ["string", "null"] } },
+      "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "baselineDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+    } },
+    "baseline": { "type": ["object", "null"], "required": ["manifest", "beforeDirectory"], "properties": { "manifest": { "type": "string" }, "beforeDirectory": { "type": "string" } } },
+    "checks": { "type": "array", "items": { "type": "object", "required": ["id", "status", "evidence"], "properties": { "id": { "type": "string" }, "status": { "enum": ["PASS", "FAIL", "BLOCKED", "NOT_APPLICABLE"] }, "evidence": { "type": "string" } } } },
+    "findings": { "type": "array" }, "debt": { "type": "array" }, "gaps": { "type": "array" }
+  }
+}

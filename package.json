@@ -9,8 +9,10 @@
   },
   "scripts": {
     "start": "node ./bin/sdd.js",
-    "sync": "node ./scripts/sync.js"
+    "sync": "node ./scripts/sync.js",
+    "test": "node --test tests/*.test.js"
   },
+  "engines": { "node": ">=22" },
   "keywords": [
     "sdd",
     "spec-driven-development",

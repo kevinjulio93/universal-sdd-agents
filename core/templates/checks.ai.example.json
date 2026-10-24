@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "acceptance": ["AI-QUALITY", "AI-BUDGET", "AI-SECURITY", "AI-CONSENT"],
+  "requiredReviews": ["qa-agent", "security-agent"],
+  "gates": {
+    "G0": { "applicable": true, "checks": [
+      { "id": "ai-acceptance", "format": "exit-code", "command": ["node", "A_IMPLEMENTAR/ai-checks.cjs", "spec"], "timeoutMs": 120000 }
+    ] },
+    "G1": { "applicable": true, "checks": [
+      { "id": "ai-static", "format": "exit-code", "command": ["node", "A_IMPLEMENTAR/ai-checks.cjs", "static"], "timeoutMs": 120000 }
+    ] },
+    "G2": { "applicable": true, "checks": [
+      { "id": "ai-contracts", "format": "exit-code", "command": ["node", "A_IMPLEMENTAR/ai-checks.cjs", "contracts"], "timeoutMs": 120000 }
+    ] },
+    "G3": { "applicable": true, "checks": [
+      { "id": "ai-integration", "format": "exit-code", "command": ["node", "A_IMPLEMENTAR/ai-checks.cjs", "integration"], "timeoutMs": 300000 }
+    ] },
+    "G4": { "applicable": true, "checks": [
+      { "id": "ai-evaluation", "format": "exit-code", "command": ["node", "A_IMPLEMENTAR/ai-checks.cjs", "evaluate"], "timeoutMs": 600000 },
+      { "id": "ai-security", "format": "exit-code", "command": ["node", "A_IMPLEMENTAR/ai-checks.cjs", "security"], "timeoutMs": 600000 }
+    ] }
+  }
+}

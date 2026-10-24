@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "acceptance": ["AC-01"],
+  "requiredReviews": ["qa-agent"],
+  "gates": {
+    "G0": { "applicable": true, "checks": [{ "id": "spec", "format": "exit-code", "command": ["npm", "run", "check:spec"] }] },
+    "G1": { "applicable": true, "checks": [{ "id": "static", "format": "exit-code", "command": ["npm", "run", "check:static"] }] },
+    "G2": { "applicable": false, "reason": "Example local change does not alter external contracts; confirm against active acceptance." },
+    "G3": { "applicable": true, "checks": [{ "id": "integration", "format": "exit-code", "command": ["npm", "run", "test:integration"] }] },
+    "G4": { "applicable": true, "checks": [
+      { "id": "tests", "format": "exit-code", "command": ["npm", "test"] },
+      { "id": "security", "format": "json", "command": ["node", ".sdd/scripts/check.js", "--kind=semgrep", "--", "semgrep", "scan", "--json", "--config", ".sdd/tools/semgrep.yaml", "src"] }
+    ] }
+  }
+}
