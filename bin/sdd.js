@@ -10,7 +10,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
+const { execSync } = require('child_process');
+const { deploy } = require('../scripts/deploy');
 const {
   intro,
   outro,
@@ -27,11 +28,7 @@ const {
 const pc = require('picocolors');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const CORE_DIR = path.join(REPO_ROOT, 'core');
-const ADAPTERS_DIR = path.join(REPO_ROOT, 'adapters');
-const STACKS_DIR = path.join(CORE_DIR, 'stacks');
 const TOOLS_DIR = path.join(REPO_ROOT, 'tools');
-const SCRIPTS_DIR = path.join(REPO_ROOT, 'scripts');
 const HOME = process.env.HOME || process.env.USERPROFILE || '';
 
 // Manejo seguro de cancelación en prompts
@@ -108,7 +105,7 @@ function getPlatformInfo() {
   };
 }
 
-const platformInfo = getPlatformInfo();
+let platformInfo;
 
 // Instaladores adaptados por Sistema Operativo
 async function installSonarScanner(s) {
@@ -544,8 +541,7 @@ async function handleSonarQubeSetup(targetProjectDir, selectedStack) {
     enabled: true,
     hostUrl: 'http://localhost:9000',
     projectKey: path.basename(targetProjectDir).toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
-    projectName: path.basename(targetProjectDir),
-    token: ''
+    projectName: path.basename(targetProjectDir)
   };
 
   if (liveServer.reachable) {
@@ -571,7 +567,7 @@ async function handleSonarQubeSetup(targetProjectDir, selectedStack) {
     }
   } else {
     log.warn(pc.yellow('⚠ No se detectó ninguna instancia de SonarQube activa en http://localhost:9000.'));
-    log.info(pc.dim('SonarQube es esencial en el Gate 4 y Gate 5 para auditar cobertura exacta de líneas y ramas (≥ 80%).'));
+    log.info(pc.dim('SonarQube es opcional; configura los checks y criterios de cobertura aplicables al proyecto.'));
 
     const sonarqubeChoice = checkCancel(await select({
       message: '¿Cómo deseas aprovisionar o conectar SonarQube para este entorno?',
@@ -598,12 +594,12 @@ async function handleSonarQubeSetup(targetProjectDir, selectedStack) {
         {
           value: 'remote',
           label: '🌐 Conectar a un SonarQube remoto o SonarCloud existente',
-          hint: 'Especificar URL remota y Token de autenticación'
+          hint: 'Especificar URL remota; autenticación mediante SONAR_TOKEN del proceso'
         },
         {
           value: 'offline',
-          label: '⚡ Usar motor determinista local de SDD ($0 Tokens / Sin Servidor)',
-          hint: 'Calcula cobertura exacta de líneas y ramas desde reportes locales sin levantar SonarQube'
+          label: 'Continuar sin servidor SonarQube',
+          hint: 'Configura por separado checks locales con evidencia real de tests y cobertura'
         }
       ]
     }));
@@ -643,33 +639,32 @@ async function handleSonarQubeSetup(targetProjectDir, selectedStack) {
       }));
       sonarConfig.hostUrl = remoteUrl;
     } else if (sonarqubeChoice === 'offline') {
-      log.info(pc.cyan('✓ Motor local activado: scripts/gates/g4-sonarqube-analysis.sh auditará lcov.info y cobertura determinista.'));
+      sonarConfig.enabled = false;
+      log.info(pc.cyan('SonarQube omitido. No se han ejecutado checks ni generado evidencia de cobertura.'));
     }
   }
 
-  // Configuración de sonar-project.properties
-  const wantProperties = checkCancel(await confirm({
+  await configureSonarProperties(targetProjectDir, selectedStack, sonarConfig);
+  return sonarConfig;
+}
+
+async function configureSonarProperties(targetProjectDir, selectedStack, sonarConfig, prompts = { confirm, text }) {
+  const wantProperties = checkCancel(await prompts.confirm({
     message: '¿Deseas configurar/actualizar el archivo sonar-project.properties para este proyecto?',
-    initialValue: true
+    initialValue: sonarConfig.enabled
   }));
 
   if (wantProperties) {
-    const pKey = checkCancel(await text({
+    const pKey = checkCancel(await prompts.text({
       message: 'Project Key en SonarQube:',
       initialValue: sonarConfig.projectKey
     }));
-    const pName = checkCancel(await text({
+    const pName = checkCancel(await prompts.text({
       message: 'Project Name en SonarQube:',
       initialValue: sonarConfig.projectName
     }));
-    const token = checkCancel(await text({
-      message: 'SonarQube Token de análisis (opcional, presiona Enter para omitir):',
-      initialValue: ''
-    }));
-
     sonarConfig.projectKey = pKey;
     sonarConfig.projectName = pName;
-    sonarConfig.token = token;
 
     // Crear o actualizar sonar-project.properties a la medida del stack
     let propertiesContent = `# ==============================================================================\n` +
@@ -680,10 +675,6 @@ async function handleSonarQubeSetup(targetProjectDir, selectedStack) {
       `sonar.projectVersion=1.0.0\n` +
       `sonar.sourceEncoding=UTF-8\n` +
       `sonar.host.url=${sonarConfig.hostUrl}\n`;
-
-    if (token) {
-      propertiesContent += `sonar.token=${token}\n`;
-    }
 
     // Configuración específica de fuentes y cobertura según stack
     if (selectedStack.id === 'typescript') {
@@ -730,139 +721,28 @@ async function handleSonarQubeSetup(targetProjectDir, selectedStack) {
       if (!currentEnv.includes('SONAR_HOST_URL=')) {
         appendStr += `\nSONAR_HOST_URL=${sonarConfig.hostUrl}\n`;
       }
-      if (token && !currentEnv.includes('SONAR_TOKEN=')) {
-        appendStr += `SONAR_TOKEN=${token}\n`;
-      }
       if (appendStr) {
         fs.appendFileSync(envDest, appendStr, 'utf8');
-        log.info(pc.dim('✔ Variables de SonarQube registradas en .env'));
+        log.info(pc.dim('✔ URL de SonarQube registrada en .env'));
       }
     }
   }
 
-  return sonarConfig;
+  log.info('Autenticación del scanner: proporciona SONAR_TOKEN en el entorno del proceso y usa export SONAR_TOKEN antes de ejecutarlo. No guardes el token en properties ni en .env.');
 }
 
 // -----------------------------------------------------------------------------
 // SUB-ROUTINE: Despliegue de Agentes y Adaptadores
 // -----------------------------------------------------------------------------
-function deployHarnesses(selectedHarnesses, isGlobal, targetDir, stackSnippet, selectedStack) {
-  const isAll = selectedHarnesses.includes('all');
-
-  function shouldDeploy(hId) {
-    return isAll || selectedHarnesses.includes(hId);
-  }
-
-  // 1. Antigravity (Google Antigravity)
-  if (shouldDeploy('antigravity')) {
-    const agentsDest = path.join(HOME, '.agents');
-    const geminiPluginsDest = path.join(HOME, '.gemini', 'config', 'plugins', 'engineering-team');
-
-    fs.mkdirSync(agentsDest, { recursive: true });
-    fs.cpSync(path.join(REPO_ROOT, 'core', 'agents'), path.join(agentsDest, 'agents'), { recursive: true });
-    fs.cpSync(path.join(REPO_ROOT, 'core', 'rules'), path.join(agentsDest, 'rules'), { recursive: true });
-    fs.cpSync(path.join(REPO_ROOT, 'core', 'skills'), path.join(agentsDest, 'skills'), { recursive: true });
-    fs.cpSync(path.join(REPO_ROOT, 'scripts'), path.join(agentsDest, 'scripts'), { recursive: true });
-    fs.cpSync(path.join(REPO_ROOT, 'tools'), path.join(agentsDest, 'tools'), { recursive: true });
-
-    // Ensure executable permissions on POSIX
-    if (!platformInfo.isWindows) {
-      try {
-        execSync(`chmod +x "${path.join(agentsDest, 'scripts', 'gates')}"/*.sh`, { stdio: 'ignore' });
-      } catch {}
-    }
-
-    const mcpConfigSrc = path.join(ADAPTERS_DIR, 'antigravity', 'mcp_config.json');
-    if (fs.existsSync(mcpConfigSrc)) {
-      fs.copyFileSync(mcpConfigSrc, path.join(agentsDest, 'mcp_config.json'));
-    }
-    const pluginJsonSrc = path.join(ADAPTERS_DIR, 'antigravity', 'plugin.json');
-    if (fs.existsSync(pluginJsonSrc)) {
-      fs.copyFileSync(pluginJsonSrc, path.join(agentsDest, 'plugin.json'));
-    }
-
-    // Registrar plugin nativo en ~/.gemini/config/plugins/engineering-team
-    fs.mkdirSync(path.dirname(geminiPluginsDest), { recursive: true });
-    try {
-      if (fs.existsSync(geminiPluginsDest)) {
-        fs.rmSync(geminiPluginsDest, { recursive: true, force: true });
-      }
-      const symlinkType = platformInfo.isWindows ? 'junction' : 'dir';
-      fs.symlinkSync(agentsDest, geminiPluginsDest, symlinkType);
-    } catch (e) {
-      fs.cpSync(agentsDest, geminiPluginsDest, { recursive: true });
-    }
-
-    log.success(pc.green(`✔ [Google Antigravity] Agentes desplegados en ~/.agents y registrados en ~/.gemini`));
-  }
-
-  // 2. Cursor IDE
-  if (shouldDeploy('cursor')) {
-    if (isGlobal) {
-      const globalRulesDir = path.join(HOME, '.cursor', 'rules');
-      fs.mkdirSync(globalRulesDir, { recursive: true });
-      fs.cpSync(path.join(ADAPTERS_DIR, 'cursor', 'rules'), globalRulesDir, { recursive: true });
-      fs.copyFileSync(path.join(ADAPTERS_DIR, 'cursor', '.cursorrules'), path.join(HOME, '.cursorrules'));
-      log.success(pc.green(`✔ [Cursor Global] Reglas desplegadas en ~/.cursor/rules y ~/.cursorrules`));
-    } else {
-      const localRulesDir = path.join(targetDir, '.cursor', 'rules');
-      fs.mkdirSync(localRulesDir, { recursive: true });
-      fs.cpSync(path.join(ADAPTERS_DIR, 'cursor', 'rules'), localRulesDir, { recursive: true });
-      fs.copyFileSync(path.join(ADAPTERS_DIR, 'cursor', '.cursorrules'), path.join(targetDir, '.cursorrules'));
-      const mcpSrc = path.join(ADAPTERS_DIR, 'cursor', 'mcp.json');
-      if (fs.existsSync(mcpSrc)) {
-        fs.copyFileSync(mcpSrc, path.join(targetDir, '.cursor', 'mcp.json'));
-      }
-      log.success(pc.green(`✔ [Cursor Local] Configuración guardada en ${targetDir}/.cursor/`));
-    }
-  }
-
-  // 3. Claude Code
-  if (shouldDeploy('claude')) {
-    const claudeDest = isGlobal ? path.join(HOME, 'CLAUDE.md') : path.join(targetDir, 'CLAUDE.md');
-    fs.copyFileSync(path.join(ADAPTERS_DIR, 'claude-code', 'CLAUDE.md'), claudeDest);
-    log.success(pc.green(`✔ [Claude Code] ${isGlobal ? 'CLAUDE.md global en ~/' : 'CLAUDE.md en proyecto'}`));
-  }
-
-  // 4. Windsurf / Cascade
-  if (shouldDeploy('windsurf')) {
-    const windsurfDest = isGlobal ? path.join(HOME, '.windsurfrules') : path.join(targetDir, '.windsurfrules');
-    fs.copyFileSync(path.join(ADAPTERS_DIR, 'windsurf', '.windsurfrules'), windsurfDest);
-    log.success(pc.green(`✔ [Windsurf] ${isGlobal ? '.windsurfrules global en ~/' : '.windsurfrules en proyecto'}`));
-  }
-
-  // 5. OpenCode
-  if (shouldDeploy('opencode')) {
-    const openCodeDest = isGlobal ? path.join(HOME, '.config', 'opencode', 'agents') : path.join(targetDir, '.opencode', 'agents');
-    fs.mkdirSync(openCodeDest, { recursive: true });
-    fs.cpSync(path.join(REPO_ROOT, 'core', 'agents'), openCodeDest, { recursive: true });
-    log.success(pc.green(`✔ [OpenCode] 9 Agentes instalados en ${openCodeDest}`));
-  }
-
-  // Si se instala a nivel de proyecto, desplegar también scripts/gates/ y tools/ locales
-  if (!isGlobal) {
-    const localGatesDest = path.join(targetDir, 'scripts', 'gates');
-    const localToolsDest = path.join(targetDir, 'tools');
-    fs.mkdirSync(localGatesDest, { recursive: true });
-    fs.mkdirSync(localToolsDest, { recursive: true });
-
-    fs.cpSync(path.join(REPO_ROOT, 'scripts', 'gates'), localGatesDest, { recursive: true });
-    fs.cpSync(path.join(REPO_ROOT, 'tools'), localToolsDest, { recursive: true });
-
-    if (!platformInfo.isWindows) {
-      try {
-        execSync(`chmod +x "${localGatesDest}"/*.sh`, { stdio: 'ignore' });
-      } catch {}
-    }
-
-    log.success(pc.green(`✔ [Scripts & Quality Gates] Scripts deterministas instalados en ./scripts/gates/`));
-  }
+function deployHarnesses(selectedHarnesses, isGlobal, targetDir) {
+  return deploy({ target: targetDir, harnesses: selectedHarnesses, global: isGlobal });
 }
 
 // -----------------------------------------------------------------------------
 // MAIN CONTROLLER
 // -----------------------------------------------------------------------------
 async function main() {
+  platformInfo = getPlatformInfo();
   console.clear();
   intro(pc.bgCyan(pc.black(' 🚀 UNIVERSAL SPEC-DRIVEN DEVELOPMENT (SDD) - TUI CLI ')));
 
@@ -880,7 +760,7 @@ async function main() {
       {
         value: 'full',
         label: '🚀 Instalación Completa del Flujo SDD (Recomendado)',
-        hint: 'Despliega Agentes, Quality Gates G0-G5, Scripts deterministas y SonarQube'
+        hint: 'Despliega adaptadores y herramientas SDD; ofrece configurar SonarQube por separado'
       },
       {
         value: 'harness_only',
@@ -889,7 +769,7 @@ async function main() {
       },
       {
         value: 'sonarqube_only',
-        label: '📊 Configurar / Iniciar SonarQube y Quality Gates (G4/G5)',
+        label: '📊 Configurar / Iniciar SonarQube (opcional)',
         hint: 'Diagnostica, levanta contenedor Docker y configura sonar-project.properties'
       },
       {
@@ -931,8 +811,8 @@ async function main() {
       },
       {
         value: 'global',
-        label: `🌍 Global en tu sistema (${platformInfo.osName}) (~/ y ~/.agents)`,
-        hint: 'Disponible para cualquier proyecto que abras en tu máquina'
+        label: `🌍 Global en tu sistema (${platformInfo.osName}) (~/.sdd/global)`,
+        hint: 'El descubrimiento global depende del harness; puede requerir integración explícita'
       }
     ]
   }));
@@ -943,7 +823,7 @@ async function main() {
   // Si es solo SonarQube
   if (action === 'sonarqube_only') {
     await handleSonarQubeSetup(targetDir, { id: 'typescript', name: 'TypeScript / Node.js' });
-    outro(pc.green('Configuración de SonarQube y Quality Gates completada con éxito.'));
+    outro(pc.green('Asistente de SonarQube finalizado. Los checks SDD se configuran por separado.'));
     process.exit(0);
   }
 
@@ -952,11 +832,11 @@ async function main() {
     message: 'Selecciona los Harnesses de IA que deseas aprovisionar:',
     options: [
       { value: 'all', label: '✨ Todos los Harnesses (Ecosistema Completo)' },
-      { value: 'antigravity', label: 'Google Antigravity (~/.agents + plugin nativo)' },
-      { value: 'cursor', label: 'Cursor IDE (.cursorrules, .cursor/rules/*.mdc, mcp.json)' },
+      { value: 'antigravity', label: 'Google Antigravity (.agents/agents, skills y reglas consultivas)' },
+      { value: 'cursor', label: 'Cursor IDE (.cursor/rules, skills y plantilla MCP inerte)' },
       { value: 'claude', label: 'Claude Code (CLAUDE.md modular)' },
-      { value: 'windsurf', label: 'Windsurf / Cascade (.windsurfrules)' },
-      { value: 'opencode', label: 'OpenCode (~/.config/opencode/agents)' }
+      { value: 'windsurf', label: 'Windsurf / Cascade (.windsurf/rules y skills)' },
+      { value: 'opencode', label: `OpenCode (${isGlobal ? '~/.config/opencode' : '.opencode'}/agents)` }
     ],
     initialValues: ['all'],
     required: true
@@ -1004,30 +884,9 @@ async function main() {
   const s = spinner();
   s.start('Sincronizando reglas y compilando adaptadores multi-harness...');
 
+  let deployment;
   try {
-    // 1. Ejecutar sync.js
-    execSync(`node "${path.join(REPO_ROOT, 'scripts', 'sync.js')}"`, { stdio: 'ignore' });
-
-    // 2. Extraer directivas de stack si aplica
-    let stackSnippet = '';
-    if (selectedStack.file) {
-      const stackFilePath = path.join(STACKS_DIR, selectedStack.file);
-      if (fs.existsSync(stackFilePath)) {
-        stackSnippet = `\n\n## 🛠️ Stack Tecnológico Activo (${selectedStack.name})\n` + fs.readFileSync(stackFilePath, 'utf8');
-      }
-    }
-
-    if (stackSnippet) {
-      ['claude-code/CLAUDE.md', 'cursor/.cursorrules', 'windsurf/.windsurfrules'].forEach(relPath => {
-        const target = path.join(ADAPTERS_DIR, relPath);
-        if (fs.existsSync(target)) {
-          fs.appendFileSync(target, stackSnippet);
-        }
-      });
-    }
-
-    s.message('Desplegando agentes, adaptadores y Quality Gates...');
-    deployHarnesses(harnesses, isGlobal, targetDir, stackSnippet, selectedStack);
+    deployment = deployHarnesses(harnesses, isGlobal, targetDir);
 
     s.stop(pc.green('¡Despliegue y compilación finalizados con éxito!'));
   } catch (err) {
@@ -1037,26 +896,34 @@ async function main() {
   }
 
   // Resumen Final
+  const resourceDir = path.join(deployment.target, isGlobal ? '.sdd/global' : '.sdd');
+  const roles = JSON.parse(fs.readFileSync(path.join(resourceDir, 'core/roles.json'), 'utf8')).roles;
   const summary = [
-    `${pc.bold('Alcance:')}     ${isGlobal ? '🌍 Global (~/.agents)' : '📁 Proyecto (' + targetDir + ')'}`,
-    `${pc.bold('Harnesses:')}   ${harnesses.includes('all') ? 'Ecosistema Completo (Antigravity, Cursor, Claude, Windsurf, OpenCode)' : harnesses.join(', ')}`,
+    `${pc.bold('Alcance:')}     ${scope} (${deployment.target})`,
+    `${pc.bold('Recursos:')}    ${resourceDir}`,
+    `${pc.bold('Harnesses:')}   ${deployment.harnesses.join(', ')}`,
+    `${pc.bold('Roles:')}       ${Object.keys(roles).length} (core/roles.json)`,
     `${pc.bold('Stack:')}       ${selectedStack.name}`,
-    `${pc.bold('SonarQube:')}   ${sonarConfig ? (sonarConfig.hostUrl + ' (Project: ' + sonarConfig.projectKey + ')') : 'Offline Deterministic'}`,
+    ...(selectedStack.file ? [`Referencia bajo demanda: ${path.join(resourceDir, 'core/stacks', selectedStack.file)}`] : []),
+    `${pc.bold('SonarQube:')}   ${sonarConfig?.enabled ? (sonarConfig.hostUrl + ' (Project: ' + sonarConfig.projectKey + ')') : 'No configurado en este despliegue'}`,
     '',
-    pc.bold('Comandos de Quality Gates deterministas ($0 Tokens):'),
-    `  • ${pc.cyan('./scripts/gates/g0-spec-lint.sh')}         → Validar OpenAPI/Spec (Spectral)`,
-    `  • ${pc.cyan('./scripts/gates/g1-static-check.sh')}       → Linter & Typecheck (tsc/biome)`,
-    `  • ${pc.cyan('./scripts/gates/g2-contract-test.sh')}      → Contract Fuzzing (Schemathesis)`,
-    `  • ${pc.cyan('./scripts/gates/g4-test-and-security.sh')}  → SAST + Cobertura SonarQube (≥ 80%)`,
-    `  • ${pc.cyan('./scripts/gates/g5-metrics-summary.sh')}    → Reporte oficial de Release`
+    'Checks: configura comandos, aplicabilidad y aceptación reales para cada proyecto.',
+    `Plantilla de referencia: ${path.join(resourceDir, 'core/templates/checks.example.json')}`,
+    `Uso de baseline, checks y gates: ${path.join(resourceDir, 'core/references/tooling.md')}`,
+    'Este despliegue no ejecuta gates ni produce evidencia de aprobación.',
+    '',
+    ...deployment.notes
   ].join('\n');
 
   note(summary, 'Resumen de Instalación SDD');
 
-  outro(pc.bgGreen(pc.black(' 🎉 ¡El ecosistema Spec-Driven Development está listo para operar! ')));
+  outro(pc.green('Despliegue SDD completado. Revisa las notas de integración y reinicia el harness antes de usarlo.'));
 }
 
-main().catch(err => {
-  console.error(pc.red('❌ Error fatal en el instalador:'), err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error(pc.red('❌ Error fatal en el instalador:'), err);
+    process.exit(1);
+  });
+}
+module.exports = { deployHarnesses, configureSonarProperties };

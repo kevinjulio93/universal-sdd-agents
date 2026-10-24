@@ -1,8 +1,5 @@
 {
   "name": "engineering-team-orchestrator",
   "version": "2.0.0",
-  "description": "Multi-agent SDD engineering team governed by Quality Gates (G0-G5): software architect orchestrator, spec writer, backend, frontend, database, security, independent quality gate evaluator, code review and QA agents with evidence-based scoring and observability.",
-  "author": {
-    "name": "Kevin Julio Marquez"
-  }
+  "description": "Generated SDD role prompts. Consult capabilities.json for runtime enforcement limits."
 }

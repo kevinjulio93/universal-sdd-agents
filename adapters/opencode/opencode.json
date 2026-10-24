@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "orchestrator",
+  "instructions": [
+    ".sdd/core/rules/AGENTS.md"
+  ],
+  "skills": {
+    "paths": [
+      ".sdd/core/skills"
+    ]
+  }
+}
